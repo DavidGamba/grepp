@@ -1,0 +1,188 @@
+#!/usr/bin/perl -w
+use strict;
+{
+    package Lines;
+    sub new
+    {
+        my $class = shift;
+        my $self  = {};
+        bless $self, $class;
+        $self->initialize(@_);
+        return $self;
+    }
+
+    sub initialize
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        # prev_size, size of prev array.
+        $self->{prev_size} = $hash->{prev_size};
+        my $file = $hash->{file};
+        open $self->{input}, '<', $file or warn "couldn't open $file $!\n";
+        my $in = $self->{input};
+    }
+
+    sub next
+    {
+        my $self = shift;
+        my $in = $self->{input};
+        my $line = <$in>;
+        unshift @{$self->{prev}}, $self->{line};
+        if ( $self->{prev_size} ) {
+            while($#{$self->{prev}} >= $self->{prev_size}) {
+                pop @{$self->{prev}};
+            }
+        }
+        $self->{line} = $line;
+        return $self->{line};
+    }
+
+    sub current
+    {
+        my $self = shift;
+        return $self->{line} || $self->next;
+    }
+
+    sub prev
+    {
+        my $self   = shift;
+        my $number = shift;
+        if ( $number ) {
+            return ${$self->{prev}}[$number]
+        }
+        else {
+            return ${$self->{prev}}[0]
+        }
+    }
+
+    sub line_group
+    {
+        my $self = shift;
+        my $line_group = '';
+        my $deep = $self->{prev_size} || -1;
+        while($deep >= 0) {
+            print $self->prev($deep);
+            $deep--;
+        }
+    }
+}
+
+__PACKAGE__->run() unless caller();
+
+sub run
+{
+    use Getopt::Long qw(:config passthrough no_ignore_case);
+    use Pod::Usage;
+    use Data::Dumper;
+
+    GetOptions(
+        'h|?'          => sub { pod2usage( -verbose => 0 ) },
+        'help'         => sub { pod2usage( -verbose => 1 ) },
+        'man'          => sub { pod2usage( -verbose => 3 ) },
+    );
+    @_ = @ARGV;
+    my $search_pattern = shift;
+    my $file           = shift;
+    my $ob = Lines->new( { file => $file, prev_size => 3 });
+    print $ob->current;
+    print $ob->prev;
+    print $ob->next;
+    print $ob->current;
+    print $ob->prev;
+    print $ob->line_group;
+
+    my $regex = qr/($search_pattern)(.*)$/o;
+    my $case;
+    $regex = qr/($search_pattern)(.*)$/io if $case;
+}
+
+__END__
+
+=head1 NAME
+
+grepp
+
+=head1 DESCRIPTION
+
+greps B<pattern> recursively from current dir or B<location> in every file
+except for files in the git ignore file or given by the cmdline option. It also
+can filter by B<file pattern>.
+
+It is inspired in grep and find, but unlike grep it doesn't print a ':'
+divider after the file name since that makes it annoying to double click
+to select.
+
+As it is expected, the color only shows when the ouput is not being
+piped. See B<--color> for more details.
+
+It automatically pipes the output to your environment B<PAGER> or to B<less> if
+no environment value is set.
+
+=head1 SYNOPSIS
+
+TODO
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<< <pattern> >>
+
+Pattern to grep for (In regex syntax).
+
+Note: if you need to use B<or> in your regex '(a|b)' do so with
+non-returning groups: B<'(?:a|b)'>.
+
+=item B<< <location> >>
+
+Location to search in
+
+=item B< -i >
+
+Ignore case
+
+=item B< -l >
+
+Print file name only
+
+=item B< -I >
+
+Ignore binary files
+
+=item B<< --name | --iname <file pattern> >>
+
+Filter result to match only things that match <file pattern>
+
+=item B<< -v | --ignore <file pattern> >>
+
+Filter result to additionally ignore files that match <file pattern>
+
+=item B<< --spacing >>
+
+Print original spacing.
+
+=item B<< --fullpath >>
+
+Print full paths for matching files
+
+=item B<< --color <color_when> >>
+
+Select color use: never, auto (default), always
+
+=item B<< --pdf >>
+
+Go through pdf files only and convert them to text using pdftotext before
+grepping.
+
+=item B<< --lines >>
+
+Number of lines of context to use. It implies B<< --spacing >>.
+
+=back
+
+=head1 BUG REPORTS
+
+David Gamba
+
+=cut

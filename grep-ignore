@@ -1,0 +1,293 @@
+#!/usr/bin/perl -w
+use strict;
+use Cwd qw(cwd abs_path);
+use File::Find;
+use Term::ANSIColor;
+use Getopt::Long qw(:config passthrough no_ignore_case);
+use Pod::Usage;
+use File::Spec::Functions qw( abs2rel );
+my ( $case, $file_only, $file_pattern, $ignore_pattern, $binary,
+$spacing, $fullpath, $pdf);
+my $color = 'auto';
+my $lines = 0;
+GetOptions(
+    'h|?'          => sub { pod2usage( -verbose => 0 ) },
+    'help'         => sub { pod2usage( -verbose => 1 ) },
+    'man'          => sub { pod2usage( -verbose => 3 ) },
+    'i'            => \$case,
+    'l'            => \$file_only,
+    'I'            => \$binary,
+    'name|iname=s' => \$file_pattern,
+    'v|ignore=s'   => \$ignore_pattern,
+    'fullpath'     => \$fullpath,
+    'spacing'      => \$spacing,
+    'color=s'      => \$color,
+    'pdf'          => \$pdf,
+    'lines=i'      => \$lines,
+);
+$spacing = 1 if $lines;
+
+my $search_pattern = shift;
+my $path = shift;
+$path = abs_path($path) if $path;
+my $cwd = cwd;
+$path ||= $cwd;
+my @files;
+
+my $ignore_extentions =
+    qr/(?:\.svn\/.*|\.sw[po]|\.html|\.un~|\.png|\.ctags|\.git\/?.*)$/;
+if ($spacing) {
+    $spacing = qr{(.*?)};
+}
+else {
+    $spacing = qr{\s*(.*?)};
+}
+
+END { close STDOUT }
+if (-t STDOUT) {
+    my $pager = $ENV{PAGER} || "less";
+    open(STDOUT, "| $pager");
+    $color = 'always' if $color eq 'auto';
+}
+
+find( \&d, $path );
+
+if ($file_only) {
+    my %h;
+    set_color('magenta');
+    foreach (@files) { $h{$_} = 1 };
+    foreach (sort keys %h) {print "$_\n"};
+    set_color('reset');
+}
+
+close STDOUT;
+
+exit 0;
+
+sub d
+{
+    my $file = $File::Find::name;
+    return unless -f $file;
+    return if $pdf and $file !~ /\.pdf$/i;
+    my $bin_file;
+    $bin_file = 1 if -B $file;
+    return if $binary and $bin_file;
+    my $print_file = $file;
+    $print_file = abs2rel($file, $cwd) unless( $fullpath );
+    return if $file_pattern and $print_file !~ /$file_pattern/i;
+    return if $ignore_pattern and $print_file =~ /$ignore_pattern/i;
+    return if $print_file =~ /$ignore_extentions/;
+    if ($pdf) {
+        open IN, '-|', '/usr/bin/pdftotext', $file, '-' or warn "couldn't open $file $!\n" && return;
+    }
+    else {
+        open IN, '<', $file or warn "couldn't open $file $!\n" && return;
+    }
+    my $regex = qr/($search_pattern)(.*)$/o;
+    $regex = qr/($search_pattern)(.*)$/io if $case;
+    my @pre_context;
+    my $pos_context = 0;
+    my $header_size = length($print_file)+3;
+    while (<IN>) {
+        push @pre_context, $_;
+        shift @pre_context if($#pre_context > $lines);
+        if (m/^$spacing$regex/o) {
+            print_file($print_file);
+            last if $file_only;
+            if($bin_file) {
+                print_color( "", "BINARY", " file matches" );
+                last;
+            }
+            else {
+                pop @pre_context; # Removes the current line
+                my $initial_space = '';
+                if( @pre_context ) {
+                    print shift @pre_context;
+                    # for the first line after context
+                    $initial_space = " " x$header_size;
+                }
+                foreach (@pre_context) { print " " x$header_size . $_ }
+                print_color( $initial_space . $1, $2 );
+                my $r = $3;
+                while($r =~ m/^(.*?)$regex/o) {
+                    $r = $3;
+                    print_match( $1, $2 );
+                }
+                print "$r\n";
+                $pos_context = $lines + 1;
+            }
+        }
+        if($lines and $pos_context eq ($lines + 1 ) ) {
+            @pre_context = ();
+            $pos_context--;
+        }
+        elsif($lines and $pos_context) {
+            print " " x$header_size . $_;
+            @pre_context = ();
+            $pos_context--;
+        }
+    }
+    close IN;
+}
+
+sub print_file
+{
+    my $file = shift;
+    set_color('magenta');
+    if ($file_only) {
+        print "$file\n";
+#       add_file($file);
+        return;
+    }
+    print "$file";
+    set_color('blue');
+    print " : ";
+    set_color('reset');
+}
+
+sub print_color
+{
+    my ( $a, $b, $c ) = @_;
+    print $a;
+    set_color('bold red');
+    print $b;
+    set_color('reset');
+    print "$c\n" if($c);
+}
+
+sub print_match
+{
+    my ( $a, $b ) = @_;
+    set_color('reset');
+    print $a;
+    set_color('bold red');
+    print $b;
+    set_color('reset');
+}
+
+sub add_file
+{
+    my $file = shift;
+    push @files, $file;
+}
+
+sub set_color
+{
+    my $c = shift;
+    $c ||= 'reset';
+    if ( $color eq 'always' ) {
+        print color "$c";
+    }
+    else {
+        print color 'reset';
+    }
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+grep-svn
+
+=head1 SYNOPSIS
+
+    grep-ignore [-i] [-l] [-I] <pattern> [<location>]
+             [--name|--iname <file pattern>]
+             [-v | --ignore <file pattern>]
+             [--spacing] [--fullpath] [--color <never|auto|always>]
+             [--pdf] [--lines <number of lines>]
+
+    grep-ignore [--man]        # shows the man page
+    grep-ignore [--help]       # shows extended help
+    grep-ignore [-h |-?]       # shows short help
+
+=head1 DESCRIPTION
+
+greps B<pattern> recursively from current dir or B<location> in every
+file except for files in the exceptions list. It also can filter by
+B<file pattern>.
+
+It is inspired in grep and find, but unlike grep it doesn't print a ':'
+divider after the file name since that makes it annoying to double click
+to select.
+
+As it is expected, the color only shows when the ouput is not being
+piped. See B<--color> for more details.
+
+It automatically pipes the output to your environment B<PAGER> or to B<less> if
+no environment value is set.
+
+=head1 EXCEPTIONS LIST
+
+    *.svn/*    # svn files
+    *.sw[po]   # vim swap files
+    *.un~      # vim undo files
+    *.html     # html files
+    *.png      # png files
+    *.ctags    # ctags files
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<< <pattern> >>
+
+Pattern to grep for (In regex syntax).
+
+Note: if you need to use B<or> in your regex '(a|b)' do so with
+non-returning groups: B<'(?:a|b)'>.
+
+=item B<< <location> >>
+
+Location to search in
+
+=item B< -i >
+
+Ignore case
+
+=item B< -l >
+
+Print file name only
+
+=item B< -I >
+
+Ignore binary files
+
+=item B<< --name | --iname <file pattern> >>
+
+Filter result to match only things that match <file pattern>
+
+=item B<< -v | --ignore <file pattern> >>
+
+Filter result to additionally ignore files that match <file pattern>
+
+=item B<< --spacing >>
+
+Print original spacing.
+
+=item B<< --fullpath >>
+
+Print full paths for matching files
+
+=item B<< --color <color_when> >>
+
+Select color use: never, auto (default), always
+
+=item B<< --pdf >>
+
+Go through pdf files only and convert them to text using pdftotext before
+grepping.
+
+=item B<< --lines >>
+
+Number of lines of context to use. It implies B<< --spacing >>.
+
+=back
+
+=head1 BUG REPORTS
+
+David Gamba
+
+=cut
