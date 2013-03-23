@@ -172,7 +172,7 @@ use strict;
         $self->{number_color} = $hash->{number_color} || 'green';
 
         $self->{file_only} = $hash->{file_only};
-        $self->{color}     = $hash->{color} || 'always';
+        $self->{color}     = $hash->{color} || '';
     }
 
     sub print_file
@@ -271,6 +271,7 @@ sub run
         open(STDOUT, "| $pager");
         $options{color} = 'always'
             if $options{color} and $options{color} eq 'auto';
+        $options{color} = 'always' unless $options{color};
     }
 
     $options{'no-filename'} = 1 if -f $path;
