@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use Test::More tests => 26;
+use Test::More tests => 29;
 use Data::Dumper;
 
 require 'grepp';
@@ -31,6 +31,8 @@ like( $lines->prev(2), qr/3/, 'prev(2) is 3');
 is( $lines->prev(3),   undef, 'prev(3) is undef');
 is( $lines->prev(4),   undef, 'prev(4) is undef');
 is( $lines->prev(5),   undef, 'prev(5) is undef');
+is( $lines->lines_group, "3\n4\n5\n6\n", 'lines_group');
+is( $lines->string_group, "3456", 'string_group');
 is( $lines->lines_group, "3\n4\n5\n6\n", 'lines_group');
 is( $lines->string_group, "3456", 'string_group');
 
@@ -73,5 +75,28 @@ $match = Match->new( { string => $lines->string_group, regex => '[lt]or', case_i
     }
 );
 is_deeply(\@match_array, \@expected, 'case insensitive matching');
+
+$match = undef;
+$match = Match->new( { string => $lines->lines_group, regex => '[lt]or', case_insensitive => 1 });
+@match_array = $match->match;
+@expected = (
+    { 'match' => 'Lor' },
+    { 'no_match' => 'em ipsum do' },
+    { 'match'    => 'Lor' },
+    {   'no_match' =>
+            ' sit amet, consectetur adipiscing elit. Integer congue, nisl
+eget luctus pharetra, '
+    },
+    { 'match'    => 'lor' },
+    { 'no_match' => 'em ipsum portti' },
+    { 'match'    => 'tor' },
+    {   'no_match' =>
+            ' urna, sed pretium eros arcu id
+justo. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscing
+vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis
+'
+    }
+);
+is_deeply(\@match_array, \@expected, 'case insensitive multiline matching');
 
 ## vim set ft:perl

@@ -104,10 +104,10 @@ use strict;
 
         $self->{string} = $hash->{string};
         if ($hash->{case_insensitive}) {
-            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/i;
+            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/is;
         }
         else {
-            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/;
+            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/s;
         }
     }
 
