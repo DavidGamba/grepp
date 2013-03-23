@@ -234,16 +234,17 @@ sub run
         open(STDOUT, "| $pager");
     }
 
-    grep_file($path, \%options);
+    find(sub{grep_file(\%options)}, $path);
 
     close STDOUT;
 }
 
 sub grep_file
 {
-    my $file = shift;
-    return unless $file and -f $file;
+    my $file = $File::Find::name;
     my $options = shift;
+
+    return unless -f $file;
 
     my $print_file =
         (defined $options->{full_path})
