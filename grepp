@@ -173,6 +173,12 @@ use strict;
             return;
         }
         print "$file";
+        $self->set_color('reset');
+    }
+
+    sub print_colon
+    {
+        my $self = shift;
         $self->set_color($self->{colon_color});
         print " : ";
         $self->set_color('reset');
@@ -217,7 +223,7 @@ sub run
         'man'       => sub { pod2usage(-verbose => 3) },
     );
     my %options = ();
-    GetOptions( \%options, 'i', 'fullpath');
+    GetOptions( \%options, 'i', 'fullpath', 'I');
     @_ = @ARGV;
     $options{search_pattern} = shift;
     pod2usage("[ERROR] Missing search pattern!\n") unless defined $options{search_pattern};
@@ -245,6 +251,8 @@ sub grep_file
     my $options = shift;
 
     return unless -f $file;
+    my $binary = 1 if -B $file;
+    return if $options->{I} and $binary;
 
     my $print_file =
         (defined $options->{full_path})
@@ -265,6 +273,13 @@ sub grep_file
         if ($match_found)
         {
             $color->print_file($print_file);
+            $color->print_colon;
+            if($binary) {
+                $color->print_match("BINARY");
+                print " file matches\n";
+                return;
+            }
+
             foreach my $entry (@match_array)
             {
                 $color->print_match($entry->{match}) if $entry->{match};
