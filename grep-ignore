@@ -28,6 +28,7 @@ GetOptions(
 $spacing = 1 if $lines;
 
 my $search_pattern = shift;
+pod2usage("[ERROR] Missing search pattern!\n") unless $search_pattern;
 my $path = shift;
 $path = abs_path($path) if $path;
 my $cwd = cwd;
