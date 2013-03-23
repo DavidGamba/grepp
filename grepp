@@ -19,6 +19,7 @@ use strict;
         my $self = shift;
         my $hash = shift;
 
+        $self->{line_number} = 0;
         # prev_size, size of prev array.
         $self->{prev_size} = $hash->{prev_size};
         my $file = $hash->{file};
@@ -31,6 +32,7 @@ use strict;
         my $self = shift;
         my $in = $self->{input};
         my $line = <$in>;
+        $self->{line_number}++;
         unshift @{$self->{prev}}, $self->{line};
         if ( $self->{prev_size} ) {
             while($#{$self->{prev}} >= $self->{prev_size}) {
@@ -86,6 +88,12 @@ use strict;
         $line_group .= $self->current;
         chomp $line_group;
         return $line_group;
+    }
+
+    sub number
+    {
+        my $self = shift;
+        $self->{line_number};
     }
 }
 
@@ -158,12 +166,13 @@ use strict;
         my $self = shift;
         my $hash = shift;
 
-        $self->{file_color}  = $hash->{file_color}  || 'magenta';
-        $self->{colon_color} = $hash->{colon_color} || 'blue';
-        $self->{match_color} = $hash->{match_color} || 'bold red';
+        $self->{file_color}   = $hash->{file_color}   || 'magenta';
+        $self->{colon_color}  = $hash->{colon_color}  || 'blue';
+        $self->{match_color}  = $hash->{match_color}  || 'bold red';
+        $self->{number_color} = $hash->{number_color} || 'green';
 
-        $self->{file_only}   = $hash->{file_only};
-        $self->{color}       = $hash->{color} || 'always';
+        $self->{file_only} = $hash->{file_only};
+        $self->{color}     = $hash->{color} || 'always';
     }
 
     sub print_file
@@ -183,7 +192,7 @@ use strict;
     {
         my $self = shift;
         $self->set_color($self->{colon_color});
-        print " : ";
+        print " :";
         $self->set_color('reset');
     }
 
@@ -194,6 +203,17 @@ use strict;
         print @_;
         $self->set_color('reset');
     }
+
+    sub print_number
+    {
+        my $self = shift;
+        $self->set_color($self->{number_color});
+        print "@_";
+        $self->set_color($self->{colon_color});
+        print ":";
+        $self->set_color('reset');
+    }
+
 
     sub set_color
     {
@@ -253,6 +273,8 @@ sub run
             if $options{color} and $options{color} eq 'auto';
     }
 
+    $options{'no-filename'} = 1 if -f $path;
+
     find(sub{grep_file(\%options)}, $path);
 
     close STDOUT;
@@ -293,12 +315,14 @@ sub grep_file
                 }
                 $color->print_colon;
             }
+            if ($options->{'line-number'}) {
+                $color->print_number($lines->number);
+            }
             if($binary) {
                 $color->print_match('BINARY');
                 print " file matches\n";
                 return;
             }
-
             foreach my $entry (@match_array)
             {
                 $color->print_match($entry->{match}) if $entry->{match};
@@ -332,7 +356,12 @@ no environment value is set.
 
 =head1 SYNOPSIS
 
-TODO
+    grepp [-i] [-l] [-I] [-n] <pattern> [<location>]
+          [--fullpath] [--color <never|auto|always>]
+
+    grepp [--man]        # shows the man page
+    grepp [--help]       # shows extended help
+    grepp [-h |-?]       # shows short help
 
 =head1 OPTIONS
 
