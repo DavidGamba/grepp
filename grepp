@@ -1,5 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
+# Copyright (c) 2012-2013 David Gamba. All rights reserved. This program is free
+# software; you can redistribute it and/or modify it under the same terms as
+# Perl itself.
 {
     package Lines;
     sub new
@@ -223,10 +226,18 @@ sub run
         'man'       => sub { pod2usage(-verbose => 3) },
     );
     my %options = ();
-    GetOptions( \%options, 'i', 'fullpath', 'I');
+    GetOptions(\%options, 'ignore-case|i', 'fullpath', 'I',
+        'no-filename', 'line-number|n', 'files-with-matches|l',
+        'color=s');
     @_ = @ARGV;
     $options{search_pattern} = shift;
     pod2usage("[ERROR] Missing search pattern!\n") unless defined $options{search_pattern};
+    if ($options{color}) {
+        pod2usage("[ERROR] wrong color argument!\n")
+            unless $options{color} eq 'never'
+                or $options{color} eq 'always'
+                or $options{color} eq 'auto';
+    }
 
     my $path = shift;
     $options{cwd} = cwd;
@@ -238,6 +249,8 @@ sub run
     {
         my $pager = $ENV{PAGER} || "less";
         open(STDOUT, "| $pager");
+        $options{color} = 'always'
+            if $options{color} and $options{color} eq 'auto';
     }
 
     find(sub{grep_file(\%options)}, $path);
@@ -255,27 +268,33 @@ sub grep_file
     return if $options->{I} and $binary;
 
     my $print_file =
-        (defined $options->{full_path})
+        (defined $options->{fullpath})
         ? $file
         : abs2rel($file, $options->{cwd});
 
     my $lines = Lines->new({ file => $file, prev_size => 3 });
     my $match = Match->new(
         {   regex            => $options->{search_pattern},
-            case_insensitive => $options->{case}
+            case_insensitive => $options->{'ignore-case'}
         }
     );
-    my $color = Color->new({ color => $options->{env_color} });
+    my $color = Color->new({ color => $options->{color} });
     while ($lines->next)
     {
         $match->{string} = $lines->current;
         my ($match_found, @match_array) = $match->match;
         if ($match_found)
         {
-            $color->print_file($print_file);
-            $color->print_colon;
+            unless ( $options->{'no-filename'}) {
+                $color->print_file($print_file);
+                if (defined $options->{'files-with-matches'}) {
+                    print "\n";
+                    return;
+                }
+                $color->print_colon;
+            }
             if($binary) {
-                $color->print_match("BINARY");
+                $color->print_match('BINARY');
                 print " file matches\n";
                 return;
             }
@@ -287,7 +306,6 @@ sub grep_file
             }
         }
     }
-
 }
 
 __END__
@@ -377,5 +395,6 @@ Number of lines of context to use. It implies B<< --spacing >>.
 =head1 BUG REPORTS
 
 David Gamba
+
 
 =cut
