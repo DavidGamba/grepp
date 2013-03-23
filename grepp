@@ -138,6 +138,68 @@ use strict;
     }
 }
 
+{
+    package Color;
+    use Term::ANSIColor;
+    sub new
+    {
+        my $class = shift;
+        my $self  = {};
+        bless $self, $class;
+        $self->initialize(@_);
+        return $self;
+    }
+
+    sub initialize
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        $self->{file_color}  = $hash->{file_color}  || 'magenta';
+        $self->{colon_color} = $hash->{colon_color} || 'blue';
+        $self->{match_color} = $hash->{match_color} || 'bold red';
+
+        $self->{file_only}   = $hash->{file_only};
+        $self->{color}       = $hash->{color} || 'always';
+    }
+
+    sub print_file
+    {
+        my $self = shift;
+        my $file = shift;
+        $self->set_color($self->{file_color});
+        if ($self->{file_only}) {
+            print "$file\n";
+            return;
+        }
+        print "$file";
+        $self->set_color($self->{colon_color});
+        print " : ";
+        $self->set_color('reset');
+    }
+
+    sub print_match
+    {
+        my $self = shift;
+        $self->set_color($self->{match_color});
+        print @_;
+        $self->set_color('reset');
+    }
+
+    sub set_color
+    {
+        my $self = shift;
+        my $c = shift;
+        $c ||= 'reset';
+        if ( $self->{color} eq 'always' ) {
+            print color "$c";
+        }
+        else {
+            print color 'reset';
+        }
+    }
+}
+
 __PACKAGE__->run() unless caller();
 
 sub run
@@ -145,26 +207,71 @@ sub run
     use Getopt::Long qw(:config passthrough no_ignore_case);
     use Pod::Usage;
     use Data::Dumper;
+    use Cwd qw(cwd abs_path);
+    use File::Spec::Functions qw( abs2rel );
+    use File::Find;
 
     GetOptions(
-        'h|?'          => sub { pod2usage( -verbose => 0 ) },
-        'help'         => sub { pod2usage( -verbose => 1 ) },
-        'man'          => sub { pod2usage( -verbose => 3 ) },
+        'h|?'       => sub { pod2usage(-verbose => 0) },
+        'help'      => sub { pod2usage(-verbose => 1) },
+        'man'       => sub { pod2usage(-verbose => 3) },
     );
+    my %options = ();
+    GetOptions( \%options, 'i', 'fullpath');
     @_ = @ARGV;
-    my $search_pattern = shift;
-    my $file           = shift;
-    my $ob = Lines->new( { file => $file, prev_size => 3 });
-    print $ob->current;
-    print $ob->prev;
-    print $ob->next;
-    print $ob->current;
-    print $ob->prev;
-    print $ob->line_group;
+    $options{search_pattern} = shift;
+    pod2usage("[ERROR] Missing search pattern!\n") unless defined $options{search_pattern};
 
-    my $regex = qr/($search_pattern)(.*)$/o;
-    my $case;
-    $regex = qr/($search_pattern)(.*)$/io if $case;
+    my $path = shift;
+    $options{cwd} = cwd;
+    $path = ($path) ? abs_path($path) : $options{cwd};
+
+    # Set pager and color if not piped output
+    END { close STDOUT }
+    if (-t STDOUT)
+    {
+        my $pager = $ENV{PAGER} || "less";
+        open(STDOUT, "| $pager");
+    }
+
+    grep_file($path, \%options);
+
+    close STDOUT;
+}
+
+sub grep_file
+{
+    my $file = shift;
+    return unless $file and -f $file;
+    my $options = shift;
+
+    my $print_file =
+        (defined $options->{full_path})
+        ? $file
+        : abs2rel($file, $options->{cwd});
+
+    my $lines = Lines->new({ file => $file, prev_size => 3 });
+    my $match = Match->new(
+        {   regex            => $options->{search_pattern},
+            case_insensitive => $options->{case}
+        }
+    );
+    my $color = Color->new({ color => $options->{env_color} });
+    while ($lines->next)
+    {
+        $match->{string} = $lines->current;
+        my ($match_found, @match_array) = $match->match;
+        if ($match_found)
+        {
+            $color->print_file($print_file);
+            foreach my $entry (@match_array)
+            {
+                $color->print_match($entry->{match}) if $entry->{match};
+                print $entry->{no_match} if $entry->{no_match};
+            }
+        }
+    }
+
 }
 
 __END__
