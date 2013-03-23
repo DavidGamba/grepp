@@ -56,15 +56,33 @@ use strict;
         }
     }
 
-    sub line_group
+    sub lines_group
     {
         my $self = shift;
         my $line_group = '';
-        my $deep = $self->{prev_size} || -1;
+        my $deep = $self->{prev_size} || 0;
+        $deep--;
         while($deep >= 0) {
-            print $self->prev($deep);
+            $line_group .= $self->prev($deep) if $self->prev($deep);
             $deep--;
         }
+        $line_group .= $self->current;
+    }
+
+    sub string_group
+    {
+        my $self = shift;
+        my $line_group = '';
+        my $deep = $self->{prev_size} || 0;
+        $deep--;
+        while($deep >= 0) {
+            $line_group .= $self->prev($deep) if $self->prev($deep);
+            chomp $line_group;
+            $deep--;
+        }
+        $line_group .= $self->current;
+        chomp $line_group;
+        return $line_group;
     }
 }
 

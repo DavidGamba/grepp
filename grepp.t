@@ -7,9 +7,10 @@ require 'grepp';
 my $file = 'test.txt';
 
 my $ob = Lines->new( { file => $file, prev_size => 3 });
-my @methods = ('next', 'prev', 'current', 'line_group');
+my @methods = ('next', 'prev', 'current', 'lines_group', 'string_group');
 can_ok($ob, @methods);
 
+is( $ob->prev,      undef, 'prev is undef');
 like( $ob->current, qr/1/, 'current is 1');
 like( $ob->next,    qr/2/, 'next is 2');
 like( $ob->current, qr/2/, 'current is 2');
@@ -29,5 +30,7 @@ like( $ob->prev(2), qr/3/, 'prev(2) is 3');
 is( $ob->prev(3),   undef, 'prev(3) is undef');
 is( $ob->prev(4),   undef, 'prev(4) is undef');
 is( $ob->prev(5),   undef, 'prev(5) is undef');
+is( $ob->lines_group, "3\n4\n5\n6\n", 'lines_group');
+is( $ob->string_group, "3456", 'string_group');
 
 ## vim set ft:perl
