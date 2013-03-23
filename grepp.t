@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
-use Test::More;
+use Test::More tests => 26;
+use Data::Dumper;
 
 require 'grepp';
 
@@ -32,5 +33,45 @@ is( $lines->prev(4),   undef, 'prev(4) is undef');
 is( $lines->prev(5),   undef, 'prev(5) is undef');
 is( $lines->lines_group, "3\n4\n5\n6\n", 'lines_group');
 is( $lines->string_group, "3456", 'string_group');
+
+# Advance to the next section of the test.txt file
+while($lines->prev(2) !~ /Lorem/) {
+    $lines->next;
+}
+
+my $match = Match->new( { string => $lines->string_group, regex => '[lt]or' });
+@methods = ('match');
+can_ok($match, @methods);
+my @match_array = $match->match;
+my @expected = (
+    { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, '
+    },
+    { 'match'    => 'lor' },
+    { 'no_match' => 'em ipsum portti' },
+    { 'match'    => 'tor' },
+    {   'no_match' =>
+            ' urna, sed pretium eros arcu idjusto. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscingvulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
+    }
+);
+is_deeply(\@match_array, \@expected, 'case sensitive matching');
+
+$match = undef;
+$match = Match->new( { string => $lines->string_group, regex => '[lt]or', case_insensitive => 1 });
+@match_array = $match->match;
+@expected = (
+    { 'match' => 'Lor' },
+    { 'no_match' => 'em ipsum do' },
+    { 'match'    => 'Lor' },
+    {   'no_match' =>
+            ' sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, '
+    },
+    { 'match'    => 'lor' },
+    { 'no_match' => 'em ipsum portti' },
+    { 'match'    => 'tor' },
+    {   'no_match' =>
+            ' urna, sed pretium eros arcu idjusto. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscingvulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
+    }
+);
+is_deeply(\@match_array, \@expected, 'case insensitive matching');
 
 ## vim set ft:perl

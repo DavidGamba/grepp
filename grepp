@@ -86,6 +86,53 @@ use strict;
     }
 }
 
+{
+    package Match;
+    sub new
+    {
+        my $class = shift;
+        my $self  = {};
+        bless $self, $class;
+        $self->initialize(@_);
+        return $self;
+    }
+
+    sub initialize
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        $self->{string} = $hash->{string};
+        if ($hash->{case_insensitive}) {
+            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/i;
+        }
+        else {
+            $self->{regex} = qr/^(.*?)($hash->{regex})(.*)$/;
+        }
+    }
+
+    # Return an array of hashes with a single key. match for array entries
+    # that match and no_match for the opposite.
+    sub match
+    {
+        my $self    = shift;
+        my $string  = shift || $self->{string};
+        my @result;
+        # $1 -> pre match
+        # $2 -> regex first match
+        # $3 -> after match
+        if ($string =~ m/$self->{regex}/) {
+            push @result, { no_match => $1 } if $1;
+            push @result, { match => $2 }    if $2;
+            push @result, $self->match($3)   if $3;
+        }
+        else {
+            push @result, { no_match => $string };
+        }
+        return @result;
+    }
+}
+
 __PACKAGE__->run() unless caller();
 
 sub run
