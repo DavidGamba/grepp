@@ -118,18 +118,23 @@ use strict;
         my $self    = shift;
         my $string  = shift || $self->{string};
         my @result;
+        my $match_found = 0;
         # $1 -> pre match
         # $2 -> regex first match
         # $3 -> after match
         if ($string =~ m/$self->{regex}/) {
             push @result, { no_match => $1 } if $1;
             push @result, { match => $2 }    if $2;
-            push @result, $self->match($3)   if $3;
+            if ($3) {
+                my ($m_f, @after) = $self->match($3);
+                push @result, @after;
+            }
+            $match_found = 1;
         }
         else {
             push @result, { no_match => $string };
         }
-        return @result;
+        return $match_found, @result;
     }
 }
 

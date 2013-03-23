@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use Test::More tests => 29;
+use Test::More tests => 32;
 use Data::Dumper;
 
 require 'grepp';
@@ -44,7 +44,8 @@ while($lines->prev(2) !~ /Lorem/) {
 my $match = Match->new( { string => $lines->string_group, regex => '[lt]or' });
 @methods = ('match');
 can_ok($match, @methods);
-my @match_array = $match->match;
+my ($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
 my @expected = (
     { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, '
     },
@@ -59,7 +60,8 @@ is_deeply(\@match_array, \@expected, 'case sensitive matching');
 
 $match = undef;
 $match = Match->new( { string => $lines->string_group, regex => '[lt]or', case_insensitive => 1 });
-@match_array = $match->match;
+($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
 @expected = (
     { 'match' => 'Lor' },
     { 'no_match' => 'em ipsum do' },
@@ -78,7 +80,8 @@ is_deeply(\@match_array, \@expected, 'case insensitive matching');
 
 $match = undef;
 $match = Match->new( { string => $lines->lines_group, regex => '[lt]or', case_insensitive => 1 });
-@match_array = $match->match;
+($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
 @expected = (
     { 'match' => 'Lor' },
     { 'no_match' => 'em ipsum do' },
