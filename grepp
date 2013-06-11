@@ -246,9 +246,18 @@ sub run
         'man'       => sub { pod2usage(-verbose => 3) },
     );
     my %options = ();
-    GetOptions(\%options, 'ignore-case|i', 'fullpath', 'I',
-        'no-filename', 'line-number|n', 'files-with-matches|l',
-        'color=s');
+    GetOptions(\%options,
+      'ignore-case|i',
+      'fullpath',
+      'I',
+      'no-filename',
+      'line-number|n',
+      'files-with-matches|l',
+      'color=s',
+      'iname=s',
+      'name=s',
+      'ignore|v=s'
+    );
     @_ = @ARGV;
     $options{search_pattern} = shift;
     pod2usage("[ERROR] Missing search pattern!\n") unless defined $options{search_pattern};
@@ -289,6 +298,15 @@ sub grep_file
     return unless -f $file;
     my $binary = 1 if -B $file;
     return if $options->{I} and $binary;
+    if( $options->{name} ) {
+      return unless $file =~ /$options->{name}/;
+    }
+    if( $options->{iname} ) {
+      return unless $file =~ /$options->{iname}/i;
+    }
+    if( $options->{ignore} ) {
+      return if $file =~ /$options->{ignore}/i;
+    }
 
     my $print_file =
         (defined $options->{fullpath})
@@ -359,6 +377,8 @@ no environment value is set.
 
     grepp [-i] [-l] [-I] [-n] <pattern> [<location>]
           [--fullpath] [--color <never|auto|always>]
+          [--name|--iname <file pattern>]
+          [-v | --ignore <file pattern case insensitive>]
 
     grepp [--man]        # shows the man page
     grepp [--help]       # shows extended help
