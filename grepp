@@ -249,8 +249,7 @@ sub run
 
     GetOptions(
         'h|?'       => sub { pod2usage(-verbose => 0) },
-        'help'      => sub { pod2usage(-verbose => 1) },
-        'man'       => sub { pod2usage(-verbose => 3) },
+        'help'      => sub { pod2usage(-verbose => 3) },
     );
     my %options = ();
     GetOptions(\%options,
@@ -390,7 +389,6 @@ no environment value is set.
           [-v | --ignore <file pattern case insensitive>]
           [--spacing]
 
-    grepp [--man]        # shows the man page
     grepp [--help]       # shows extended help
     grepp [-h |-?]       # shows short help
 
@@ -423,11 +421,13 @@ Ignore binary files
 
 =item B<< --name | --iname <file pattern> >>
 
-Filter result to match only things that match <file pattern>
+Filter result to match only things that match <file pattern>. B<< iname >> does
+case insensitive matching.
 
 =item B<< -v | --ignore <file pattern> >>
 
-Filter result to additionally ignore files that match <file pattern>
+Filter result to additionally ignore files that match <file pattern>. Case
+insensitive.
 
 =item B<< --spacing >>
 
@@ -441,20 +441,26 @@ Print full paths for matching files
 
 Select color use: never, auto (default), always
 
-=item B<< --pdf >>
+=item B<< --preprocessor | --pp <program> >> TODO
 
-Go through pdf files only and convert them to text using pdftotext before
-grepping.
+Run each file by a preprocessor program before searching for matches.
 
-=item B<< --lines >>
+B<<Example:>> Use '--iname '\.pdf' --preprocessor pdftotext' to run each file
+with 'pdf' extention through the 'pdftotext' program to convert pdf files to
+text using pdftotext before grepping.
+
+=item B<< --lines <lines> >> TODO
 
 Number of lines of context to use. It implies B<< --spacing >>.
+
+=item B<< -m | --multi >> TODO
+
+Allow grepping for regex in multiple lines. '\n' gets changed into space.
 
 =back
 
 =head1 BUG REPORTS
 
 David Gamba
-
 
 =cut
