@@ -224,7 +224,10 @@ use strict;
     {
         my $self = shift;
         $self->set_color($self->{match_color});
-        print @_;
+        my $color = color $self->{match_color};
+        my $string = "@_";
+        $string =~ s/\n/\n$color/g;
+        print $string;
         $self->set_color('reset');
     }
 
