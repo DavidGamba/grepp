@@ -67,6 +67,7 @@ use strict;
         }
     }
 
+    # Returns a group of lines, the size of the group is given by 'prev_size'.
     sub lines_group
     {
         my $self = shift;
@@ -80,6 +81,8 @@ use strict;
         $line_group .= $self->current;
     }
 
+    # Returns a group of lines, the size of the group is given by 'prev_size'.
+    # It removes the end of line character in each line and replaces it by a space.
     sub string_group
     {
         my $self = shift;
@@ -88,7 +91,7 @@ use strict;
         $deep--;
         while($deep >= 0) {
             $line_group .= $self->prev($deep) if $self->prev($deep);
-            chomp $line_group;
+            if( chomp $line_group ) { $line_group .= ' ' }
             $deep--;
         }
         $line_group .= $self->current;

@@ -33,9 +33,9 @@ is( $lines->prev(3),   undef, 'prev(3) is undef');
 is( $lines->prev(4),   undef, 'prev(4) is undef');
 is( $lines->prev(5),   undef, 'prev(5) is undef');
 is( $lines->lines_group, "3\n4\n5\n6\n", 'lines_group');
-is( $lines->string_group, "3456", 'string_group');
+is( $lines->string_group, "3 4 5 6", 'string_group');
 is( $lines->lines_group, "3\n4\n5\n6\n", 'lines_group');
-is( $lines->string_group, "3456", 'string_group');
+is( $lines->string_group, "3 4 5 6", 'string_group');
 
 # Advance to the next section of the test.txt file
 while($lines->prev(2) !~ /Lorem/) {
@@ -49,12 +49,12 @@ can_ok($match, @methods);
 my ($match_found, @match_array) = $match->match;
 is( $match_found, 1, 'match found');
 my @expected = (
-    { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, ' },
+    { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisl eget luctus pharetra, ' },
     { 'match'    => 'lor' },
     { 'no_match' => 'em ipsum portti' },
     { 'match'    => 'tor' },
     {   'no_match' =>
-            ' urna, sed pretium eros arcu idjusto. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscingvulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
+            ' urna, sed pretium eros arcu id justo. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscing vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
     }
 );
 is_deeply(\@match_array, \@expected, 'case sensitive matching');
@@ -68,13 +68,13 @@ is( $match_found, 1, 'match found');
     { 'no_match' => 'em ipsum do' },
     { 'match'    => 'Lor' },
     {   'no_match' =>
-            ' sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, '
+            ' sit amet, consectetur adipiscing elit. Integer congue, nisl eget luctus pharetra, '
     },
     { 'match'    => 'lor' },
     { 'no_match' => 'em ipsum portti' },
     { 'match'    => 'tor' },
     {   'no_match' =>
-            ' urna, sed pretium eros arcu idjusto. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscingvulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
+            ' urna, sed pretium eros arcu id justo. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscing vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis'
     }
 );
 is_deeply(\@match_array, \@expected, 'case insensitive matching');
