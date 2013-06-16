@@ -24,6 +24,12 @@ use strict;
         $self->{prev_size} = $hash->{prev_size};
         my $file = $hash->{file};
         open $self->{input}, '<', $file or warn "couldn't open $file $!\n";
+        if ($hash->{preprocessor}) {
+            open $self->{input}, '-|', $hash->{preprocessor}, $file, '-' or warn "couldn't open $file $!\n";
+        }
+        else {
+            open $self->{input}, '<', $file or warn "couldn't open $file $!\n";
+        }
         my $in = $self->{input};
     }
 
@@ -263,7 +269,8 @@ sub run
       'iname=s',
       'name=s',
       'ignore|v=s',
-      'spacing'
+      'spacing',
+      'preprocessor|pp=s'
     );
     @_ = @ARGV;
     $options{search_pattern} = shift;
@@ -320,7 +327,10 @@ sub grep_file
         ? $file
         : abs2rel($file, $options->{cwd});
 
-    my $lines = Lines->new({ file => $file, prev_size => 3 });
+    my $lines = Lines->new({ file => $file,
+        prev_size => 3,
+        preprocessor => $options->{preprocessor}
+      });
     my $match = Match->new(
         {   regex            => $options->{search_pattern},
             case_insensitive => $options->{'ignore-case'},
@@ -346,9 +356,11 @@ sub grep_file
                 $color->print_number($lines->number);
             }
             if($binary) {
-                $color->print_match('BINARY');
-                print " file matches\n";
-                return;
+                unless($options->{preprocessor}) {
+                    $color->print_match('BINARY');
+                    print " file matches\n";
+                    return;
+                }
             }
             foreach my $entry (@match_array)
             {
@@ -443,13 +455,18 @@ Print full paths for matching files
 
 Select color use: never, auto (default), always
 
-=item B<< --preprocessor | --pp >> I<program> I<TODO>
+=item B<< --preprocessor | --pp >> I<program>
 
 Run each file by a preprocessor program before searching for matches.
 
-B<< Example: >> Use '--iname '\.pdf' --preprocessor pdftotext' to run each file
-with 'pdf' extention through the 'pdftotext' program to convert pdf files to
-text using pdftotext before grepping.
+B<< Example: >> "grepp pattern --iname '\.pdf' --preprocessor
+pdftotext" to run each file with '.pdf' extention through the
+'pdftotext' program to convert pdf files to text using pdftotext before
+grepping.
+
+When using the B<< --preprocessor >> option the I<BINARY> filtering is
+disabled, you should filter results by filename extension using B<< --name >>
+or B<< iname >>.
 
 =item B<< --lines <lines> >> I<TODO>
 
