@@ -188,7 +188,7 @@ use strict;
         my $hash = shift;
 
         $self->{file_color}   = $hash->{file_color}   || 'magenta';
-        $self->{colon_color}  = $hash->{colon_color}  || 'blue';
+        $self->{divider}      = $hash->{divider}      || 'blue';
         $self->{match_color}  = $hash->{match_color}  || 'bold red';
         $self->{number_color} = $hash->{number_color} || 'green';
 
@@ -209,11 +209,11 @@ use strict;
         $self->set_color('reset');
     }
 
-    sub print_colon
+    sub print_divider
     {
         my $self = shift;
-        $self->set_color($self->{colon_color});
-        print " :";
+        $self->set_color($self->{divider});
+        print "@_";
         $self->set_color('reset');
     }
 
@@ -230,8 +230,6 @@ use strict;
         my $self = shift;
         $self->set_color($self->{number_color});
         print "@_";
-        $self->set_color($self->{colon_color});
-        print ":";
         $self->set_color('reset');
     }
 
@@ -278,7 +276,8 @@ sub run
       'name=s',
       'ignore|v=s',
       'spacing',
-      'preprocessor|pp=s'
+      'preprocessor|pp=s',
+      'context|C=i'
     );
     @_ = @ARGV;
     $options{search_pattern} = shift;
@@ -306,6 +305,7 @@ sub run
     }
 
     $options{'no-filename'} = 1 if -f $path;
+    $options{context} ||= 0;
 
     find(sub{grep_file(\%options)}, $path);
 
@@ -336,7 +336,7 @@ sub grep_file
         : abs2rel($file, $options->{cwd});
 
     my $lines = Lines->new({ file => $file,
-        prev_size => 3,
+        prev_size => $options->{context},
         preprocessor => $options->{preprocessor}
       });
     my $match = Match->new(
@@ -346,22 +346,39 @@ sub grep_file
         }
     );
     my $color = Color->new({ color => $options->{color} });
+
+    my @precontext;
+    my $initial_divider = 0;
     while ($lines->next)
     {
+        push @precontext, $lines->number;
+        shift @precontext if $#precontext > $options->{context};
         $match->{string} = $lines->current;
         my ($match_found, @match_array) = $match->match;
         if ($match_found)
         {
+            pop @precontext;
+            while(@precontext) {
+              if( $#precontext == ($options->{context} -1) ) {
+                  $color->print_divider("--\n") if $initial_divider;
+                  $initial_divider = 1;
+              }
+              my $precontext_number = shift(@precontext);
+              $color->print_number($precontext_number);
+              $color->print_divider(" -");
+              print $lines->prev($lines->number - $precontext_number - 1);
+            }
             unless ( $options->{'no-filename'}) {
                 $color->print_file($print_file);
                 if (defined $options->{'files-with-matches'}) {
                     print "\n";
                     return;
                 }
-                $color->print_colon;
+                $color->print_divider(" :");
             }
             if ($options->{'line-number'}) {
                 $color->print_number($lines->number);
+                $color->print_divider(":");
             }
             if($binary) {
                 unless($options->{preprocessor}) {
@@ -407,12 +424,11 @@ grepp [-i] [-l] [-I] [-n] I<pattern> [I<location>]
       [--fullpath] [--color I<never>|I<auto>|I<always>]
       [--name|--iname I<file_pattern>]
       [-v | --ignore I<file_pattern>]
-      [--spacing]
+      [--spacing] [--pp|--prerocessor I<program>]
 
 grepp [--help]       # shows extended help
 
 grepp [-h |-?]       # shows short help
-
 
 =head1 OPTIONS
 
@@ -473,7 +489,7 @@ When using the B<< --preprocessor >> option the I<BINARY> filtering is
 disabled, you should filter results by filename extension using B<< --name >>
 or B<< iname >>.
 
-=item B<< --lines <lines> >> I<TODO>
+=item B<< --context <number> >> I<TODO>
 
 Number of lines of context to use. It implies B<< --spacing >>.
 

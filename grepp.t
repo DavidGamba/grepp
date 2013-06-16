@@ -26,7 +26,7 @@ is( $lines->prev(2),   undef, 'prev(2) is undef');
 like( $lines->next,    qr/4/, 'next is 4');
 like( $lines->next,    qr/5/, 'next is 5');
 like( $lines->next,    qr/6/, 'next is 6');
-like( $lines->prev,    qr/5/, 'prev is 5');
+like( $lines->prev(0),    qr/5/, 'prev is 5');
 like( $lines->prev(1), qr/4/, 'prev(1) is 4');
 like( $lines->prev(2), qr/3/, 'prev(2) is 3');
 is( $lines->prev(3),   undef, 'prev(3) is undef');
