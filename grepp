@@ -144,9 +144,11 @@ use strict;
         # $3 -> regex first match
         # $4 -> after match
         if ($string =~ m/$self->{regex}/) {
-            push @result, { no_match => $1 } if $self->{current_spacing};
+            my $no_match = '';
+            $no_match .= $1 if $1 and $self->{current_spacing};
             $self->{current_spacing} = 1;
-            push @result, { no_match => $2 } if $2;
+            $no_match .= $2 if $2;
+            push @result, { no_match => $no_match } if $no_match;
             push @result, { match => $3 }    if $3;
             if ($4) {
                 my ($m_f, @after) = $self->match($4);

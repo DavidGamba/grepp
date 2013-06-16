@@ -47,8 +47,7 @@ can_ok($match, @methods);
 my ($match_found, @match_array) = $match->match;
 is( $match_found, 1, 'match found');
 my @expected = (
-    { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, '
-    },
+    { 'no_match' => 'Lorem ipsum doLor sit amet, consectetur adipiscing elit. Integer congue, nisleget luctus pharetra, ' },
     { 'match'    => 'lor' },
     { 'no_match' => 'em ipsum portti' },
     { 'match'    => 'tor' },
