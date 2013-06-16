@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
-use Test::More tests => 36;
+use Test::More tests => 38;
 use Data::Dumper;
 
 require 'grepp';
@@ -132,6 +132,7 @@ q' },
 ' }
 );
 is_deeply(\@match_array, \@expected, 'remove intial spacing');
+
 $match = undef;
 $match = Match->new( { string => $lines->lines_group, regex => 'u[ei]', case_insensitive => 1, initial_spacing => 1 });
 ($match_found, @match_array) = $match->match;
@@ -156,4 +157,29 @@ q' },
 ' }
 );
 is_deeply(\@match_array, \@expected, 'keep intial spacing');
+
+$match = undef;
+$match = Match->new( { string => $lines->lines_group, regex => '(ue|ui)', case_insensitive => 1 });
+($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
+@expected = (
+    { 'no_match' => 'Pellentesq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' et libero nisl, nec pos' },
+    { 'match' => 'ue' },
+    { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
+    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's erat. Cras a nunc
+q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's ac volutpat enim. Etiam nibh
+      lacus, tristiq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
+' }
+);
+is_deeply(\@match_array, \@expected, 'Allow capturing groups in given regex: "(ue|ui)"');
 ## vim set ft:perl

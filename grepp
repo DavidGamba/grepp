@@ -121,10 +121,10 @@ use strict;
 
         $self->{string} = $hash->{string};
         if ($hash->{case_insensitive}) {
-            $self->{regex} = qr/^(\s*)(.*?)($hash->{regex})(.*)$/is;
+            $self->{regex} = qr/$hash->{regex}/is;
         }
         else {
-            $self->{regex} = qr/^(\s*)(.*?)($hash->{regex})(.*)$/s;
+            $self->{regex} = qr/$hash->{regex}/s;
         }
         $self->{initial_spacing} = 0;
         $self->{initial_spacing} = 1 if defined $hash->{initial_spacing};
@@ -143,15 +143,21 @@ use strict;
         # $2 -> pre match
         # $3 -> regex first match
         # $4 -> after match
-        if ($string =~ m/$self->{regex}/) {
-            my $no_match = '';
-            $no_match .= $1 if $1 and $self->{current_spacing};
-            $self->{current_spacing} = 1;
-            $no_match .= $2 if $2;
-            push @result, { no_match => $no_match } if $no_match;
-            push @result, { match => $3 }    if $3;
-            if ($4) {
-                my ($m_f, @after) = $self->match($4);
+        if ($string =~ m/$self->{regex}/p) {
+            my $prematch = ${^PREMATCH};
+            my $match = ${^MATCH};
+            my $postmatch = ${^POSTMATCH};
+            if ($prematch) {
+                $prematch =~ m/^(\s*)(.*)/s;
+                my $no_match = '';
+                $no_match .= $1 if $1 and $self->{current_spacing};
+                $self->{current_spacing} = 1;
+                $no_match .= $2 if $2;
+                push @result, { no_match => $no_match } if $no_match;
+            }
+            push @result, { match => $match }    if $match;
+            if ($postmatch) {
+                my ($m_f, @after) = $self->match($postmatch);
                 push @result, @after;
             }
             $match_found = 1;
@@ -415,9 +421,6 @@ grepp [-h |-?]       # shows short help
 =item I<pattern>
 
 Pattern to grep for (In regex syntax).
-
-Note: if you need to use I<or> in your regex '(a|b)' do so with
-non-returning groups: I<'(?:a|b)'>.
 
 =item I<location>
 
