@@ -1,12 +1,13 @@
 #!/usr/bin/perl -w
 use strict;
-use Test::More tests => 32;
+use Test::More tests => 36;
 use Data::Dumper;
 
 require 'grepp';
 
 my $file = 'test.txt';
 
+print "### Testing Lines class\n";
 my $lines = Lines->new( { file => $file, prev_size => 3 });
 my @methods = ('next', 'prev', 'current', 'lines_group', 'string_group');
 can_ok($lines, @methods);
@@ -41,6 +42,7 @@ while($lines->prev(2) !~ /Lorem/) {
     $lines->next;
 }
 
+print "### Testing Match class\n";
 my $match = Match->new( { string => $lines->string_group, regex => '[lt]or' });
 @methods = ('match');
 can_ok($match, @methods);
@@ -101,4 +103,57 @@ vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis
 );
 is_deeply(\@match_array, \@expected, 'case insensitive multiline matching');
 
+# Advance to the next section of the test.txt file
+while($lines->prev(2) !~ /^\s*Pellentesque/) {
+    $lines->next;
+}
+
+$match = undef;
+$match = Match->new( { string => $lines->lines_group, regex => 'u[ei]', case_insensitive => 1 });
+($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
+@expected = (
+    { 'no_match' => 'Pellentesq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' et libero nisl, nec pos' },
+    { 'match' => 'ue' },
+    { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
+    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's erat. Cras a nunc
+q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's ac volutpat enim. Etiam nibh
+      lacus, tristiq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
+' }
+);
+is_deeply(\@match_array, \@expected, 'remove intial spacing');
+$match = undef;
+$match = Match->new( { string => $lines->lines_group, regex => 'u[ei]', case_insensitive => 1, initial_spacing => 1 });
+($match_found, @match_array) = $match->match;
+is( $match_found, 1, 'match found');
+@expected = (
+    { 'no_match' => '  Pellentesq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' et libero nisl, nec pos' },
+    { 'match' => 'ue' },
+    { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
+    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's erat. Cras a nunc
+q' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
+    { 'match' => 'ui' },
+    { 'no_match' => 's ac volutpat enim. Etiam nibh
+      lacus, tristiq' },
+    { 'match' => 'ue' },
+    { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
+' }
+);
+is_deeply(\@match_array, \@expected, 'keep intial spacing');
 ## vim set ft:perl
