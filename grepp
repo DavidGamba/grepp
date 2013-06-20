@@ -142,21 +142,17 @@ use strict;
         my $string  = shift || $self->{string};
         my @result;
         my $match_found = 0;
-        # $1 -> spacing pre match
-        # $2 -> pre match
-        # $3 -> regex first match
-        # $4 -> after match
         if ($string =~ m/$self->{regex}/p) {
             my $prematch = ${^PREMATCH};
             my $match = ${^MATCH};
             my $postmatch = ${^POSTMATCH};
             if ($prematch) {
-                $prematch =~ m/^(\s*)(.*)/s;
-                my $no_match = '';
-                $no_match .= $1 if $1 and $self->{current_spacing};
-                $self->{current_spacing} = 1;
-                $no_match .= $2 if $2;
-                push @result, { no_match => $no_match } if $no_match;
+                while ($prematch =~ m/^(\n?)([ \f\r\t]*)(\S*\n?)/gm) {
+                    push @result, { no_match => $1 } if $1;
+                    push @result, { no_match => $2 } if $2 and $self->{current_spacing};
+                    $self->{current_spacing} = 1;
+                    push @result, { no_match => $3 } if $3;
+                }
             }
             push @result, { match => $match }    if $match;
             if ($postmatch) {
@@ -166,7 +162,11 @@ use strict;
             $match_found = 1;
         }
         else {
-            push @result, { no_match => $string };
+            while ($string =~ m/^(\n?)([ \f\r\t]*)(\S*\n?)/gm) {
+                push @result, { no_match => $1 } if $1;
+                push @result, { no_match => $2 } if $2 and $self->{current_spacing};
+                push @result, { no_match => $3 } if $3;
+            }
         }
         $self->{current_spacing} = $self->{initial_spacing};
         return $match_found, @result;
