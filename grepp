@@ -108,6 +108,7 @@ use strict;
 
 {
     package Match;
+    use Data::Dumper;
     sub new
     {
         my $class = shift;
@@ -122,12 +123,15 @@ use strict;
         my $self = shift;
         my $hash = shift;
 
+        $self->{debug_merge_array} = $hash->{debug_merge_array};
+        $self->{array_of_matches} = ();
+
         $self->{string} = $hash->{string};
         if ($hash->{case_insensitive}) {
-            $self->{regex} = qr/$hash->{regex}/is;
+            $self->{regex} = qr/$hash->{regex}/si;
         }
         else {
-            $self->{regex} = qr/$hash->{regex}/s;
+            $self->{regex} = $hash->{regex};
         }
         $self->{initial_spacing} = 0;
         $self->{initial_spacing} = 1 if defined $hash->{initial_spacing};
@@ -142,16 +146,23 @@ use strict;
         my $string  = shift || $self->{string};
         my @result;
         my $match_found = 0;
-        if ($string =~ m/$self->{regex}/p) {
+        if ($string =~ m/$self->{regex}/sp) {
             my $prematch = ${^PREMATCH};
             my $match = ${^MATCH};
             my $postmatch = ${^POSTMATCH};
             if ($prematch) {
-                while ($prematch =~ m/^(\n?)([ \f\r\t]*)(\S*\n?)/gm) {
+                while ($prematch =~ m/^(\n?)([ \f\r\t]*)(.*\n?)/gm) {
                     push @result, { no_match => $1 } if $1;
-                    push @result, { no_match => $2 } if $2 and $self->{current_spacing};
+                    if ( $self->{current_spacing} ) {
+                        my $result = '';
+                        $result .= $2 if $2;
+                        $result .= $3 if $3;
+                        push @result, { no_match => $result } if $2 or $3;
+                    }
+                    else {
+                        push @result, { no_match => $3 } if $3;
+                    }
                     $self->{current_spacing} = 1;
-                    push @result, { no_match => $3 } if $3;
                 }
             }
             push @result, { match => $match }    if $match;
@@ -162,14 +173,81 @@ use strict;
             $match_found = 1;
         }
         else {
-            while ($string =~ m/^(\n?)([ \f\r\t]*)(\S*\n?)/gm) {
+            while ($string =~ m/^(\n?)(.*\n?)/gm) {
                 push @result, { no_match => $1 } if $1;
-                push @result, { no_match => $2 } if $2 and $self->{current_spacing};
-                push @result, { no_match => $3 } if $3;
+                push @result, { no_match => $2 } if $2;
             }
         }
         $self->{current_spacing} = $self->{initial_spacing};
         return $match_found, @result;
+    }
+
+    sub merge_array
+    {
+        my $self  = shift;
+        my $extra = shift;
+        my $main  = $self->{array_of_matches};
+        my @new_matches;
+        print
+            "[Debug] == Init merge array: array_of_matches, new_matches\n"
+            if $self->{debug_merge_array};
+        print Dumper @$main if $self->{debug_merge_array};
+        print Dumper $extra if $self->{debug_merge_array};
+
+        my @copy = @$extra;
+        if ($main)
+        {
+            my $counter = 0;
+            EXT: foreach my $m (reverse @$main)
+            {
+                # TODO: only check @main for the size of @$extra, don't go all the way back.
+                foreach my $e (@copy)
+                {
+                    $counter++;
+                    print
+                        "[Debug] going through array_of_matches in reverse order and new_matches. Entry number $counter\n"
+                        if $self->{debug_merge_array};
+                    print Dumper $m if $self->{debug_merge_array};
+                    print Dumper $e if $self->{debug_merge_array};
+                    if (    defined $m->{match}
+                        and defined $e->{match}
+                        and $m->{match} eq $e->{match})
+                    {
+                        print
+                            "[Debug] Entries are equal, finishing the loop\n"
+                            if $self->{debug_merge_array};
+                        shift @$extra;
+                        @$extra = @copy unless @$extra;
+                        last EXT;
+                    }
+                    elsif ( defined $m->{no_match}
+                        and defined $e->{no_match}
+                        and $m->{no_match} eq $e->{no_match})
+                    {
+                        print
+                            "[Debug] Entries are equal, finishing the loop\n"
+                            if $self->{debug_merge_array};
+                        shift @$extra;
+                        @$extra = @copy unless @$extra;
+                       last EXT;
+                    }
+                    else
+                    {
+                        print
+                            "[Debug] Entries are different, trying next if exist\n"
+                            if $self->{debug_merge_array};
+                        shift @$extra;
+                        @$extra = @copy unless @$extra;
+                    }
+                }
+            }
+        }
+        print "[Debug] New matches to add\n"
+            if $self->{debug_merge_array};
+        print Dumper $extra if $self->{debug_merge_array};
+        push @{ $self->{array_of_matches} }, @$extra;
+        print "{Debug} == End\n" if $self->{debug_merge_array};
+        return @$extra;
     }
 }
 
@@ -283,7 +361,8 @@ sub run
       'ignore|v=s',
       'spacing',
       'preprocessor|pp=s',
-      'context|C=i'
+      'context|C=i',
+      'multi|m'
     );
     @_ = @ARGV;
     $options{search_pattern} = shift;
@@ -348,7 +427,8 @@ sub grep_file
     my $match = Match->new(
         {   regex            => $options->{search_pattern},
             case_insensitive => $options->{'ignore-case'},
-            initial_spacing  => $options->{'spacing'}
+            initial_spacing  => $options->{'spacing'},
+            debug_merge_array => 0
         }
     );
     my $color = Color->new({ color => $options->{color} });
@@ -359,8 +439,14 @@ sub grep_file
     {
         push @precontext, $lines->number;
         shift @precontext if $#precontext > $options->{context};
-        $match->{string} = $lines->current;
+        if($options->{multi}) {
+            $match->{string} = $lines->lines_group;
+        }
+        else {
+            $match->{string} = $lines->current;
+        }
         my ($match_found, @match_array) = $match->match;
+        my @new_matches = ($options->{multi}) ? $match->merge_array(\@match_array) : @match_array;
         if ($match_found)
         {
             pop @precontext;
@@ -393,7 +479,7 @@ sub grep_file
                     return;
                 }
             }
-            foreach my $entry (@match_array)
+            foreach my $entry (@new_matches)
             {
                 $color->print_match($entry->{match}) if $entry->{match};
                 print $entry->{no_match} if $entry->{no_match};
