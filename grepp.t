@@ -89,17 +89,17 @@ is( $match_found, 1, 'match found');
     { 'match'    => 'Lor' },
     {   'no_match' =>
             ' sit amet, consectetur adipiscing elit. Integer congue, nisl
-eget luctus pharetra, '
-    },
+' },
+    {   'no_match' => 'eget luctus pharetra, ' },
     { 'match'    => 'lor' },
     { 'no_match' => 'em ipsum portti' },
     { 'match'    => 'tor' },
-    {   'no_match' =>
-            ' urna, sed pretium eros arcu id
-justo. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscing
-vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis
-'
-    }
+    {   'no_match' => ' urna, sed pretium eros arcu id
+' },
+    {   'no_match' => 'justo. Integer a purus ut urna interdum elementum. Phasellus lobortis adipiscing
+' },
+    {   'no_match' => 'vulputate. Pellentesque vel nunc nibh. Proin in velit ante. Nulla venenatis
+' }
 );
 is_deeply(\@match_array, \@expected, 'case insensitive multiline matching');
 
@@ -118,15 +118,18 @@ is( $match_found, 1, 'match found');
     { 'no_match' => ' et libero nisl, nec pos' },
     { 'match' => 'ue' },
     { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
-    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+' },
+    { 'no_match' => '    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
     { 'match' => 'ui' },
     { 'no_match' => 's erat. Cras a nunc
-q' },
+' },
+    { 'no_match' => 'q' },
     { 'match' => 'ui' },
     { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
     { 'match' => 'ui' },
     { 'no_match' => 's ac volutpat enim. Etiam nibh
-      lacus, tristiq' },
+' },
+    { 'no_match' => '      lacus, tristiq' },
     { 'match' => 'ue' },
     { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
 ' }
@@ -143,15 +146,18 @@ is( $match_found, 1, 'match found');
     { 'no_match' => ' et libero nisl, nec pos' },
     { 'match' => 'ue' },
     { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
-    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+' },
+    { 'no_match' => '    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
     { 'match' => 'ui' },
     { 'no_match' => 's erat. Cras a nunc
-q' },
+' },
+    { 'no_match' => 'q' },
     { 'match' => 'ui' },
     { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
     { 'match' => 'ui' },
     { 'no_match' => 's ac volutpat enim. Etiam nibh
-      lacus, tristiq' },
+' },
+    { 'no_match' => '      lacus, tristiq' },
     { 'match' => 'ue' },
     { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
 ' }
@@ -168,15 +174,18 @@ is( $match_found, 1, 'match found');
     { 'no_match' => ' et libero nisl, nec pos' },
     { 'match' => 'ue' },
     { 'no_match' => 're turpis. Aliquam erat volutpat. Maecenas
-    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
+' },
+    { 'no_match' => '    enim eros, hendrerit non ullamcorper aliquam, commodo q' },
     { 'match' => 'ui' },
     { 'no_match' => 's erat. Cras a nunc
-q' },
+' },
+    { 'no_match' => 'q' },
     { 'match' => 'ui' },
     { 'no_match' => 's mi ornare tincidunt eget eget risus. D' },
     { 'match' => 'ui' },
     { 'no_match' => 's ac volutpat enim. Etiam nibh
-      lacus, tristiq' },
+' },
+    { 'no_match' => '      lacus, tristiq' },
     { 'match' => 'ue' },
     { 'no_match' => ' sed molestie in, molestie ac tellus. Integer dolor metus,
 ' }
