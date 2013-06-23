@@ -508,33 +508,14 @@ sub grep_file
                     $color->print_divider("--\n") if $initial_divider;
                     $initial_divider = 1;
                 }
-                unless ($options->{'no-filename'}) {
-                    $color->print_file($print_file);
-                    $color->print_divider(" -");
-                }
+                print_file($print_file, $color, $options, '-');
                 my $precontext_number = shift(@precontext);
-                if ($options->{'line-number'}) {
-                  $color->print_number($precontext_number);
-                  $color->print_divider("-");
-                }
+                print_number($precontext_number, $color, $options, '-');
                 print $lines->prev(
                     $lines->number - $precontext_number - 1);
             }
-            unless ($options->{'no-filename'})
-            {
-                $color->print_file($print_file);
-                if (defined $options->{'files-with-matches'})
-                {
-                    print "\n";
-                    return;
-                }
-                $color->print_divider(" :");
-            }
-            if ($options->{'line-number'})
-            {
-                $color->print_number($lines->number);
-                $color->print_divider(":");
-            }
+            return if print_file($print_file, $color, $options, ':');
+            print_number($lines->number, $color, $options, ':');
             if ($binary)
             {
                 unless ($options->{preprocessor})
@@ -551,6 +532,38 @@ sub grep_file
             }
         }
     }
+}
+
+sub print_file
+{
+  my $file    = shift;
+  my $color   = shift;
+  my $options = shift;
+  my $divider = shift;
+  unless ($options->{'no-filename'})
+  {
+    $color->print_file($file);
+    if (defined $options->{'files-with-matches'})
+    {
+      print "\n";
+      return 1;
+    }
+    $color->print_divider(" $divider") if $divider;
+  }
+  return 0;
+}
+
+sub print_number
+{
+  my $number  = shift;
+  my $color   = shift;
+  my $options = shift;
+  my $divider = shift;
+  if ($options->{'line-number'})
+  {
+    $color->print_number($number);
+    $color->print_divider($divider);
+  }
 }
 
 __END__
