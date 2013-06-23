@@ -468,7 +468,9 @@ sub grep_file
     my $initial_divider = 0;
     while ($lines->next)
     {
-        push @precontext, $lines->number;
+        unless ( $binary and !$options->{preprocessor} or defined $options->{'files-with-matches'}) {
+            push @precontext, $lines->number;
+        }
         shift @precontext if $#precontext > $options->{context};
         if ($options->{multi})
         {
@@ -493,9 +495,15 @@ sub grep_file
                     $color->print_divider("--\n") if $initial_divider;
                     $initial_divider = 1;
                 }
+                unless ($options->{'no-filename'}) {
+                    $color->print_file($print_file);
+                    $color->print_divider(" -");
+                }
                 my $precontext_number = shift(@precontext);
-                $color->print_number($precontext_number);
-                $color->print_divider(" -");
+                if ($options->{'line-number'}) {
+                  $color->print_number($precontext_number);
+                  $color->print_divider("-");
+                }
                 print $lines->prev(
                     $lines->number - $precontext_number - 1);
             }
@@ -625,7 +633,7 @@ When using the B<< --preprocessor >> option the I<BINARY> filtering is
 disabled, you should filter results by filename extension using B<< --name >>
 or B<< iname >>.
 
-=item B<< --context <number> >> I<TODO>
+=item B<< --context <number> >>
 
 Number of lines of context to use. It implies B<< --spacing >>.
 
