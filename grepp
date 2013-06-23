@@ -385,7 +385,7 @@ sub run
         'iname=s',              'name=s',
         'ignore|v=s',           'spacing',
         'preprocessor|pp=s',    'context|C=i',
-        'multi|m'
+        'multi|m=i',            'no-git'
     );
     @_ = @ARGV;
     $options{search_pattern} = shift;
@@ -423,6 +423,15 @@ sub run
     close STDOUT;
 }
 
+# TODO
+# Use git-check-ignore to check if a file is ignored or not.
+# This is a new command as of git 1.8.2 so there must be a check for the
+# availability of the comand before running it.
+sub git_ignore_file
+{
+    return 0;
+}
+
 sub grep_file
 {
     my $file    = $File::Find::name;
@@ -443,6 +452,10 @@ sub grep_file
     {
         return if $file =~ /$options->{ignore}/i;
     }
+    unless ($options->{'no-git'})
+    {
+        return if git_ignore_file($file);
+    }
 
     my $print_file =
         (defined $options->{fullpath})
@@ -451,7 +464,7 @@ sub grep_file
 
     my $lines = Lines->new(
         {   file         => $file,
-            prev_size    => $options->{context},
+            prev_size    => $options->{multi},
             preprocessor => $options->{preprocessor}
         }
     );
