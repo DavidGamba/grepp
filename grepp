@@ -28,7 +28,7 @@ use strict;
             or warn "couldn't open $file $!\n";
         if ($hash->{preprocessor})
         {
-            open $self->{input}, '-|', $hash->{preprocessor}, $file, '-'
+            open $self->{input}, '-|', "$hash->{preprocessor} $file $hash->{preprocessor_options}"
                 or warn "couldn't open $file $!\n";
         }
         else
@@ -384,8 +384,9 @@ sub run
         'files-with-matches|l', 'color=s',
         'iname=s',              'name=s',
         'ignore|v=s',           'spacing',
-        'preprocessor|pp=s',    'context|C=i',
-        'multi|m=i',            'no-git'
+        'preprocessor|pp=s',    'preprocessor-options|ppo=s',
+        'context|C=i',          'multi|m=i',
+        'no-git'
     );
     @_ = @ARGV;
     $options{search_pattern} = shift;
@@ -465,7 +466,8 @@ sub grep_file
     my $lines = Lines->new(
         {   file         => $file,
             prev_size    => $options->{multi},
-            preprocessor => $options->{preprocessor}
+            preprocessor => $options->{preprocessor},
+            preprocessor_options => $options->{'preprocessor-options'}
         }
     );
     my $match = Match->new(
@@ -594,7 +596,7 @@ grepp [-i] [-l] [-I] [-n] I<pattern> [I<location>]
       [--fullpath] [--color I<never>|I<auto>|I<always>]
       [--name|--iname I<file_pattern>]
       [-v | --ignore I<file_pattern>]
-      [--spacing] [--pp|--prerocessor I<program>]
+      [--spacing] [--pp|--prerocessor I<program> --ppo I<program options after filename>]
 
 grepp [--help]       # shows extended help
 
@@ -650,8 +652,11 @@ Select color use: never, auto (default), always
 
 Run each file by a preprocessor program before searching for matches.
 
-B<< Example: >> "grepp pattern --iname '\.pdf' --preprocessor
-pdftotext" to run each file with '.pdf' extention through the
+B<< Example: >>
+
+  grepp pattern --iname '\.pdf' --preprocessor pdftotext --ppo '-'
+
+To run each file with '.pdf' extention through the
 'pdftotext' program to convert pdf files to text using pdftotext before
 grepping.
 
@@ -659,13 +664,22 @@ When using the B<< --preprocessor >> option the I<BINARY> filtering is
 disabled, you should filter results by filename extension using B<< --name >>
 or B<< iname >>.
 
+=item B<< --preprocessor-options | --ppo >> I<program options after filename>
+
+Use this option to pass preprocessor options that MUST go after the filename,
+if you are using options that go before the filename then pass them in the
+B<--preprocessor> option.
+
 =item B<< --context <number> >>
 
 Number of lines of context to use. It implies B<< --spacing >>.
 
-=item B<< -m | --multi >> I<TODO>
+TODO: Only precontext is implemented
+
+=item B<< -m | --multi >> I<number>
 
 Allow grepping for regex in multiple lines. '\n' gets changed into space.
+I<number> determines how many lines plus one to look for.
 
 =back
 
