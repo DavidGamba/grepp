@@ -154,6 +154,21 @@ use strict;
         $self->{current_spacing} = $self->{initial_spacing};
     }
 
+    sub clear
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        $self->{debug_merge_array} = $hash->{debug_merge_array};
+        $self->{array_of_matches}  = ();
+
+        $self->{string} = $hash->{string};
+        $self->{initial_spacing} = 0;
+        $self->{initial_spacing} = 1
+            if defined $hash->{initial_spacing};
+        $self->{current_spacing} = $self->{initial_spacing};
+    }
+
     # Return an array of hashes with a single key. match for array entries
     # that match and no_match for the opposite.
     sub match
@@ -419,6 +434,18 @@ sub run
     $options{'no-filename'} = 1 if -f $path;
     $options{context} ||= 0;
 
+    my $color = Color->new({ color => $options{color} });
+    my $match = Match->new(
+        {   regex             => $options{search_pattern},
+            case_insensitive  => $options{'ignore-case'},
+            initial_spacing   => $options{'spacing'},
+            debug_merge_array => 0
+        }
+    );
+
+    $options{color_object} = $color;
+    $options{match_object} = $match;
+
     find(sub { grep_file(\%options) }, $path);
 
     close STDOUT;
@@ -470,14 +497,13 @@ sub grep_file
             preprocessor_options => $options->{'preprocessor-options'}
         }
     );
-    my $match = Match->new(
-        {   regex             => $options->{search_pattern},
-            case_insensitive  => $options->{'ignore-case'},
-            initial_spacing   => $options->{'spacing'},
+    my $match = $options->{match_object};
+    $match->clear(
+        {   initial_spacing   => $options->{'spacing'},
             debug_merge_array => 0
         }
     );
-    my $color = Color->new({ color => $options->{color} });
+    my $color = $options->{color_object};
 
     my @precontext;
     my $initial_divider = 0;
