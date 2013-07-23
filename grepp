@@ -24,19 +24,27 @@ use strict;
         # prev_size, size of prev array.
         $self->{prev_size} = $hash->{prev_size};
         my $file = $hash->{file};
-        open $self->{input}, '<', $file
-            or warn "couldn't open $file $!\n";
-        if ($hash->{preprocessor})
-        {
-            open $self->{input}, '-|', "$hash->{preprocessor} $file $hash->{preprocessor_options}"
-                or warn "couldn't open $file $!\n";
-        }
-        else
-        {
+        if ($hash->{file}) {
+            my $file = $hash->{file};
             open $self->{input}, '<', $file
                 or warn "couldn't open $file $!\n";
+            if ($hash->{preprocessor})
+            {
+                open $self->{input}, '-|', "$hash->{preprocessor} $file $hash->{preprocessor_options}"
+                    or warn "couldn't open $file $!\n";
+            }
+            else
+            {
+                open $self->{input}, '<', $file
+                    or warn "couldn't open $file $!\n";
+            }
         }
-        my $in = $self->{input};
+        elsif ($hash->{stdin}) {
+            open($self->{input}, '<&', \*STDIN) or die "Couldn't open STDIN: $!\n";
+        }
+        else {
+            die "Lines: Missing file or stdin\n";
+        }
     }
 
     sub next
@@ -446,7 +454,20 @@ sub run
     $options{color_object} = $color;
     $options{match_object} = $match;
 
-    find(sub { grep_file(\%options) }, $path);
+    if (-t STDIN) {
+        find(sub { wanted(\%options) }, $path);
+    }
+    else {
+        my $lines = Lines->new(
+            {   stdin        => 1,
+                prev_size    => $options{multi},
+                preprocessor => $options{preprocessor},
+                preprocessor_options => $options{'preprocessor-options'}
+            }
+        );
+        $options{'no-filename'} = 1;
+        grep_file('STDIN', $lines, \%options);
+    }
 
     close STDOUT;
 }
@@ -460,30 +481,39 @@ sub git_ignore_file
     return 0;
 }
 
-sub grep_file
+sub filter_file
 {
-    my $file    = $File::Find::name;
+    my $file    = shift;
     my $options = shift;
 
-    return unless -f $file;
-    my $binary = 1 if -B $file;
-    return if $options->{I} and $binary;
+    return 1 unless -f $file;
+    $options->{binary} = 0;
+    $options->{binary} = 1 if -B $file;
+    return 1 if $options->{I} and $options->{binary};
     if ($options->{name})
     {
-        return unless $file =~ /$options->{name}/;
+        return 1 unless $file =~ /$options->{name}/;
     }
     if ($options->{iname})
     {
-        return unless $file =~ /$options->{iname}/i;
+        return 1 unless $file =~ /$options->{iname}/i;
     }
     if ($options->{ignore})
     {
-        return if $file =~ /$options->{ignore}/i;
+        return 1 if $file =~ /$options->{ignore}/i;
     }
     unless ($options->{'no-git'})
     {
-        return if git_ignore_file($file);
+        return 1 if git_ignore_file($file);
     }
+    return 0;
+}
+
+sub wanted
+{
+    my $file    = $File::Find::name;
+    my $options = shift;
+    return if filter_file($file, $options);
 
     my $print_file =
         (defined $options->{fullpath})
@@ -497,6 +527,15 @@ sub grep_file
             preprocessor_options => $options->{'preprocessor-options'}
         }
     );
+    grep_file($print_file, $lines, $options);
+}
+
+sub grep_file
+{
+    my $print_file = shift;
+    my $lines      = shift;
+    my $options    = shift;
+
     my $match = $options->{match_object};
     $match->clear(
         {   initial_spacing   => $options->{'spacing'},
@@ -509,7 +548,7 @@ sub grep_file
     my $initial_divider = 0;
     while ($lines->next)
     {
-        unless ( $binary and !$options->{preprocessor} or defined $options->{'files-with-matches'}) {
+        unless ( $options->{binary} and !$options->{preprocessor} or defined $options->{'files-with-matches'}) {
             push @precontext, $lines->number;
         }
         shift @precontext if $#precontext > $options->{context};
@@ -544,7 +583,7 @@ sub grep_file
             }
             return if print_file($print_file, $color, $options, ':');
             print_number($lines->number, $color, $options, ':');
-            if ($binary)
+            if ($options->{binary})
             {
                 unless ($options->{preprocessor})
                 {
