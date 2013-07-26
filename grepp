@@ -1,9 +1,11 @@
 #!/usr/bin/perl -w
 use strict;
+
 # Copyright (c) 2012-2013 David Gamba. All rights reserved. This program is free
 # software; you can redistribute it and/or modify it under the same terms as
 # Perl itself.
 {
+
     package Lines;
 
     sub new
@@ -21,26 +23,27 @@ use strict;
         my $hash = shift;
 
         $self->{line_number} = 0;
+
         # prev_size, size of prev array.
         $self->{prev_size} = $hash->{prev_size};
         my $file = $hash->{file};
-        if ($hash->{file}) {
+        if ( $hash->{file} ) {
             my $file = $hash->{file};
             open $self->{input}, '<', $file
                 or warn "couldn't open $file $!\n";
-            if ($hash->{preprocessor})
-            {
-                open $self->{input}, '-|', "$hash->{preprocessor} $file $hash->{preprocessor_options}"
+            if ( $hash->{preprocessor} ) {
+                open $self->{input}, '-|',
+                    "$hash->{preprocessor} $file $hash->{preprocessor_options}"
                     or warn "couldn't open $file $!\n";
             }
-            else
-            {
+            else {
                 open $self->{input}, '<', $file
                     or warn "couldn't open $file $!\n";
             }
         }
-        elsif ($hash->{stdin}) {
-            open($self->{input}, '<&', \*STDIN) or die "Couldn't open STDIN: $!\n";
+        elsif ( $hash->{stdin} ) {
+            open( $self->{input}, '<&', \*STDIN )
+                or die "Couldn't open STDIN: $!\n";
         }
         else {
             die "Lines: Missing file or stdin\n";
@@ -54,10 +57,8 @@ use strict;
         my $line = <$in>;
         $self->{line_number}++;
         unshift @{ $self->{prev} }, $self->{line};
-        if ($self->{prev_size})
-        {
-            while ($#{ $self->{prev} } >= $self->{prev_size})
-            {
+        if ( $self->{prev_size} ) {
+            while ( $#{ $self->{prev} } >= $self->{prev_size} ) {
                 pop @{ $self->{prev} };
             }
         }
@@ -75,12 +76,10 @@ use strict;
     {
         my $self   = shift;
         my $number = shift;
-        if ($number)
-        {
+        if ($number) {
             return ${ $self->{prev} }[$number];
         }
-        else
-        {
+        else {
             return ${ $self->{prev} }[0];
         }
     }
@@ -92,8 +91,7 @@ use strict;
         my $line_group = '';
         my $deep       = $self->{prev_size} || 0;
         $deep--;
-        while ($deep >= 0)
-        {
+        while ( $deep >= 0 ) {
             $line_group .= $self->prev($deep) if $self->prev($deep);
             $deep--;
         }
@@ -108,10 +106,9 @@ use strict;
         my $line_group = '';
         my $deep       = $self->{prev_size} || 0;
         $deep--;
-        while ($deep >= 0)
-        {
+        while ( $deep >= 0 ) {
             $line_group .= $self->prev($deep) if $self->prev($deep);
-            if (chomp $line_group) { $line_group .= ' ' }
+            if ( chomp $line_group ) { $line_group .= ' ' }
             $deep--;
         }
         $line_group .= $self->current;
@@ -127,6 +124,7 @@ use strict;
 }
 
 {
+
     package Match;
     use Data::Dumper;
 
@@ -148,12 +146,10 @@ use strict;
         $self->{array_of_matches}  = ();
 
         $self->{string} = $hash->{string};
-        if ($hash->{case_insensitive})
-        {
+        if ( $hash->{case_insensitive} ) {
             $self->{regex} = qr/$hash->{regex}/si;
         }
-        else
-        {
+        else {
             $self->{regex} = $hash->{regex};
         }
         $self->{initial_spacing} = 0;
@@ -170,7 +166,7 @@ use strict;
         $self->{debug_merge_array} = $hash->{debug_merge_array};
         $self->{array_of_matches}  = ();
 
-        $self->{string} = $hash->{string};
+        $self->{string}          = $hash->{string};
         $self->{initial_spacing} = 0;
         $self->{initial_spacing} = 1
             if defined $hash->{initial_spacing};
@@ -185,44 +181,36 @@ use strict;
         my $string = shift || $self->{string};
         my @result;
         my $match_found = 0;
-        if ($string =~ m/$self->{regex}/sp)
-        {
+        if ( $string =~ m/$self->{regex}/sp ) {
             my $prematch  = ${^PREMATCH};
             my $match     = ${^MATCH};
             my $postmatch = ${^POSTMATCH};
-            if ($prematch)
-            {
-                while ($prematch =~ m/^(\n?)([ \f\r\t]*)(.*\n?)/gm)
-                {
+            if ($prematch) {
+                while ( $prematch =~ m/^(\n?)([ \f\r\t]*)(.*\n?)/gm ) {
                     push @result, { no_match => $1 } if $1;
-                    if ($self->{current_spacing})
-                    {
+                    if ( $self->{current_spacing} ) {
                         my $result = '';
                         $result .= $2 if $2;
                         $result .= $3 if $3;
                         push @result, { no_match => $result }
                             if $2
-                            or $3;
+                                or $3;
                     }
-                    else
-                    {
+                    else {
                         push @result, { no_match => $3 } if $3;
                     }
                     $self->{current_spacing} = 1;
                 }
             }
             push @result, { match => $match } if $match;
-            if ($postmatch)
-            {
-                my ($m_f, @after) = $self->match($postmatch);
+            if ($postmatch) {
+                my ( $m_f, @after ) = $self->match($postmatch);
                 push @result, @after;
             }
             $match_found = 1;
         }
-        else
-        {
-            while ($string =~ m/^(\n?)(.*\n?)/gm)
-            {
+        else {
+            while ( $string =~ m/^(\n?)(.*\n?)/gm ) {
                 push @result, { no_match => $1 } if $1;
                 push @result, { no_match => $2 } if $2;
             }
@@ -237,21 +225,18 @@ use strict;
         my $extra = shift;
         my $main  = $self->{array_of_matches};
         my @new_matches;
-        print
-            "[Debug] == Init merge array: array_of_matches, new_matches\n"
+        print "[Debug] == Init merge array: array_of_matches, new_matches\n"
             if $self->{debug_merge_array};
         print Dumper @$main if $self->{debug_merge_array};
         print Dumper $extra if $self->{debug_merge_array};
 
         my @copy = @$extra;
-        if ($main)
-        {
+        if ($main) {
             my $counter = 0;
-            EXT: foreach my $m (reverse @$main)
-            {
+            EXT: foreach my $m ( reverse @$main ) {
+
                 # TODO: only check @main for the size of @$extra, don't go all the way back.
-                foreach my $e (@copy)
-                {
+                foreach my $e (@copy) {
                     $counter++;
                     print
                         "[Debug] going through array_of_matches in reverse order and new_matches. Entry number $counter\n"
@@ -260,8 +245,7 @@ use strict;
                     print Dumper $e if $self->{debug_merge_array};
                     if (    defined $m->{match}
                         and defined $e->{match}
-                        and $m->{match} eq $e->{match})
-                    {
+                        and $m->{match} eq $e->{match} ) {
                         print
                             "[Debug] Entries are equal, finishing the loop\n"
                             if $self->{debug_merge_array};
@@ -271,8 +255,7 @@ use strict;
                     }
                     elsif ( defined $m->{no_match}
                         and defined $e->{no_match}
-                        and $m->{no_match} eq $e->{no_match})
-                    {
+                        and $m->{no_match} eq $e->{no_match} ) {
                         print
                             "[Debug] Entries are equal, finishing the loop\n"
                             if $self->{debug_merge_array};
@@ -280,8 +263,7 @@ use strict;
                         @$extra = @copy unless @$extra;
                         last EXT;
                     }
-                    else
-                    {
+                    else {
                         print
                             "[Debug] Entries are different, trying next if exist\n"
                             if $self->{debug_merge_array};
@@ -301,6 +283,7 @@ use strict;
 }
 
 {
+
     package Color;
     use Term::ANSIColor;
 
@@ -331,9 +314,8 @@ use strict;
     {
         my $self = shift;
         my $file = shift;
-        $self->set_color($self->{file_color});
-        if ($self->{file_only})
-        {
+        $self->set_color( $self->{file_color} );
+        if ( $self->{file_only} ) {
             print "$file\n";
             return;
         }
@@ -344,7 +326,7 @@ use strict;
     sub print_divider
     {
         my $self = shift;
-        $self->set_color($self->{divider});
+        $self->set_color( $self->{divider} );
         print "@_";
         $self->set_color('reset');
     }
@@ -352,7 +334,7 @@ use strict;
     sub print_match
     {
         my $self = shift;
-        $self->set_color($self->{match_color});
+        $self->set_color( $self->{match_color} );
         my $color  = color $self->{match_color};
         my $string = "@_";
         $string =~ s/\n/\n$color/g;
@@ -363,7 +345,7 @@ use strict;
     sub print_number
     {
         my $self = shift;
-        $self->set_color($self->{number_color});
+        $self->set_color( $self->{number_color} );
         print "@_";
         $self->set_color('reset');
     }
@@ -373,12 +355,10 @@ use strict;
         my $self = shift;
         my $c    = shift;
         $c ||= 'reset';
-        if ($self->{color} eq 'always')
-        {
+        if ( $self->{color} eq 'always' ) {
             print color "$c";
         }
-        else
-        {
+        else {
             print color 'reset';
         }
     }
@@ -397,8 +377,8 @@ sub run
     use File::Basename;
 
     GetOptions(
-        'h|?'  => sub { pod2usage(-verbose => 0) },
-        'help' => sub { pod2usage(-verbose => 3) },
+        'h|?'  => sub { pod2usage( -verbose => 0 ) },
+        'help' => sub { pod2usage( -verbose => 3 ) },
     );
     my %options = ();
     GetOptions(
@@ -417,25 +397,23 @@ sub run
     pod2usage("[ERROR] Missing search pattern!\n")
         unless defined $options{search_pattern};
 
-    if ($options{color})
-    {
+    if ( $options{color} ) {
         pod2usage("[ERROR] wrong color argument!\n")
             unless $options{color} eq 'never'
-            or $options{color}     eq 'always'
-            or $options{color}     eq 'auto';
+                or $options{color} eq 'always'
+                or $options{color} eq 'auto';
     }
 
     my $path = shift;
     $options{given_path} = $path;
-    $options{cwd} = cwd;
+    $options{cwd}        = cwd;
     $path = ($path) ? abs_path($path) : $options{cwd};
 
     # Set pager and color if not piped output
     END { close STDOUT }
-    if (-t STDOUT)
-    {
+    if ( -t STDOUT ) {
         my $pager = $ENV{PAGER} || "less";
-        open(STDOUT, "| $pager");
+        open( STDOUT, "| $pager" );
         $options{color} = 'always'
             if $options{color} and $options{color} eq 'auto';
         $options{color} = 'always' unless $options{color};
@@ -444,7 +422,7 @@ sub run
     $options{'no-filename'} = 1 if -f $path;
     $options{context} ||= 0;
 
-    my $color = Color->new({ color => $options{color} });
+    my $color = Color->new( { color => $options{color} } );
     my $match = Match->new(
         {   regex             => $options{search_pattern},
             case_insensitive  => $options{'ignore-case'},
@@ -456,19 +434,19 @@ sub run
     $options{color_object} = $color;
     $options{match_object} = $match;
 
-    if (-t STDIN) {
-        find(sub { wanted(\%options) }, $path);
+    if ( -t STDIN ) {
+        find( sub { wanted( \%options ) }, $path );
     }
     else {
         my $lines = Lines->new(
-            {   stdin        => 1,
-                prev_size    => $options{multi},
-                preprocessor => $options{preprocessor},
+            {   stdin                => 1,
+                prev_size            => $options{multi},
+                preprocessor         => $options{preprocessor},
                 preprocessor_options => $options{'preprocessor-options'}
             }
         );
         $options{'no-filename'} = 1;
-        grep_file('STDIN', $lines, \%options);
+        grep_file( 'STDIN', $lines, \%options );
     }
 
     close STDOUT;
@@ -491,8 +469,8 @@ sub filter_file
     my $options  = shift;
 
     # Ignore hidden files and folders
-    unless(defined $options->{given_path} and $options->{given_path} =~ /\.$/)
-    {
+    unless ( defined $options->{given_path}
+        and $options->{given_path} =~ /\.$/ ) {
         return 1 if $relative =~ m{(^\.|/\.)};
         return 1 if basename($file) =~ /^\./;
     }
@@ -501,20 +479,16 @@ sub filter_file
     $options->{binary} = 0;
     $options->{binary} = 1 if -B $file;
     return 1 if $options->{I} and $options->{binary};
-    if ($options->{name})
-    {
+    if ( $options->{name} ) {
         return 1 unless $file =~ /$options->{name}/;
     }
-    if ($options->{iname})
-    {
+    if ( $options->{iname} ) {
         return 1 unless $file =~ /$options->{iname}/i;
     }
-    if ($options->{ignore})
-    {
+    if ( $options->{ignore} ) {
         return 1 if $file =~ /$options->{ignore}/i;
     }
-    unless ($options->{'no-git'})
-    {
+    unless ( $options->{'no-git'} ) {
         return 1 if git_ignore_file($file);
     }
     return 0;
@@ -527,19 +501,19 @@ sub wanted
     my $options = shift;
 
     my $print_file =
-        (defined $options->{fullpath})
+        ( defined $options->{fullpath} )
         ? $file
-        : abs2rel($file, $options->{cwd});
-    return if filter_file($file, $dir, $print_file, $options);
+        : abs2rel( $file, $options->{cwd} );
+    return if filter_file( $file, $dir, $print_file, $options );
 
     my $lines = Lines->new(
-        {   file         => $file,
-            prev_size    => $options->{multi},
-            preprocessor => $options->{preprocessor},
+        {   file                 => $file,
+            prev_size            => $options->{multi},
+            preprocessor         => $options->{preprocessor},
             preprocessor_options => $options->{'preprocessor-options'}
         }
     );
-    grep_file($print_file, $lines, $options);
+    grep_file( $print_file, $lines, $options );
 }
 
 sub grep_file
@@ -558,55 +532,46 @@ sub grep_file
 
     my @precontext;
     my $initial_divider = 0;
-    while ($lines->next)
-    {
-        unless ( $options->{binary} and !$options->{preprocessor} or defined $options->{'files-with-matches'}) {
+    while ( $lines->next ) {
+        unless ( $options->{binary} and !$options->{preprocessor}
+            or defined $options->{'files-with-matches'} ) {
             push @precontext, $lines->number;
         }
         shift @precontext if $#precontext > $options->{context};
-        if ($options->{multi})
-        {
+        if ( $options->{multi} ) {
             $match->{string} = $lines->lines_group;
         }
-        else
-        {
+        else {
             $match->{string} = $lines->current;
         }
-        my ($match_found, @match_array) = $match->match;
+        my ( $match_found, @match_array ) = $match->match;
         my @new_matches =
-            ($options->{multi})
-            ? $match->merge_array(\@match_array)
+            ( $options->{multi} )
+            ? $match->merge_array( \@match_array )
             : @match_array;
-        if ($match_found)
-        {
+        if ($match_found) {
             pop @precontext;
-            while (@precontext)
-            {
-                if ($#precontext == ($options->{context} - 1))
-                {
+            while (@precontext) {
+                if ( $#precontext == ( $options->{context} - 1 ) ) {
                     $color->print_divider("--\n") if $initial_divider;
                     $initial_divider = 1;
                 }
-                print_file($print_file, $color, $options, '-');
+                print_file( $print_file, $color, $options, '-' );
                 my $precontext_number = shift(@precontext);
-                print_number($precontext_number, $color, $options, '-');
-                print $lines->prev(
-                    $lines->number - $precontext_number - 1);
+                print_number( $precontext_number, $color, $options, '-' );
+                print $lines->prev( $lines->number - $precontext_number - 1 );
             }
-            return if print_file($print_file, $color, $options, ':');
-            print_number($lines->number, $color, $options, ':');
-            if ($options->{binary})
-            {
-                unless ($options->{preprocessor})
-                {
+            return if print_file( $print_file, $color, $options, ':' );
+            print_number( $lines->number, $color, $options, ':' );
+            if ( $options->{binary} ) {
+                unless ( $options->{preprocessor} ) {
                     $color->print_match('BINARY');
                     print " file matches\n";
                     return;
                 }
             }
-            foreach my $entry (@new_matches)
-            {
-                $color->print_match($entry->{match}) if $entry->{match};
+            foreach my $entry (@new_matches) {
+                $color->print_match( $entry->{match} ) if $entry->{match};
                 print $entry->{no_match} if $entry->{no_match};
             }
         }
@@ -615,34 +580,31 @@ sub grep_file
 
 sub print_file
 {
-  my $file    = shift;
-  my $color   = shift;
-  my $options = shift;
-  my $divider = shift;
-  unless ($options->{'no-filename'})
-  {
-    $color->print_file($file);
-    if (defined $options->{'files-with-matches'})
-    {
-      print "\n";
-      return 1;
+    my $file    = shift;
+    my $color   = shift;
+    my $options = shift;
+    my $divider = shift;
+    unless ( $options->{'no-filename'} ) {
+        $color->print_file($file);
+        if ( defined $options->{'files-with-matches'} ) {
+            print "\n";
+            return 1;
+        }
+        $color->print_divider(" $divider") if $divider;
     }
-    $color->print_divider(" $divider") if $divider;
-  }
-  return 0;
+    return 0;
 }
 
 sub print_number
 {
-  my $number  = shift;
-  my $color   = shift;
-  my $options = shift;
-  my $divider = shift;
-  if ($options->{'line-number'})
-  {
-    $color->print_number($number);
-    $color->print_divider($divider);
-  }
+    my $number  = shift;
+    my $color   = shift;
+    my $options = shift;
+    my $divider = shift;
+    if ( $options->{'line-number'} ) {
+        $color->print_number($number);
+        $color->print_divider($divider);
+    }
 }
 
 __END__
