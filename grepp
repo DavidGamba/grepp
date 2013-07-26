@@ -394,6 +394,7 @@ sub run
     use Cwd qw(cwd abs_path);
     use File::Spec::Functions qw( abs2rel );
     use File::Find;
+    use File::Basename;
 
     GetOptions(
         'h|?'  => sub { pod2usage(-verbose => 0) },
@@ -425,6 +426,7 @@ sub run
     }
 
     my $path = shift;
+    $options{given_path} = $path;
     $options{cwd} = cwd;
     $path = ($path) ? abs_path($path) : $options{cwd};
 
@@ -483,8 +485,17 @@ sub git_ignore_file
 
 sub filter_file
 {
-    my $file    = shift;
-    my $options = shift;
+    my $file     = shift;
+    my $dir      = shift;
+    my $relative = shift;
+    my $options  = shift;
+
+    # Ignore hidden files and folders
+    unless(defined $options->{given_path} and $options->{given_path} =~ /\.$/)
+    {
+        return 1 if $relative =~ m{(^\.|/\.)};
+        return 1 if basename($file) =~ /^\./;
+    }
 
     return 1 unless -f $file;
     $options->{binary} = 0;
@@ -512,13 +523,14 @@ sub filter_file
 sub wanted
 {
     my $file    = $File::Find::name;
+    my $dir     = $File::Find::dir;
     my $options = shift;
-    return if filter_file($file, $options);
 
     my $print_file =
         (defined $options->{fullpath})
         ? $file
         : abs2rel($file, $options->{cwd});
+    return if filter_file($file, $dir, $print_file, $options);
 
     my $lines = Lines->new(
         {   file         => $file,
@@ -677,7 +689,11 @@ Pattern to grep for (In regex syntax).
 
 =item I<location>
 
-Location to search in
+Location to search in. By default it will use the current directory.
+
+NOTE: Just like I<grep>, this program will ignore hidden files (files or
+directories starting with a dot '.'), however if the path given is or ends with
+a dot '.' if will include hidden files and directories.
 
 =item B< -i >
 
