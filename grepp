@@ -471,7 +471,7 @@ sub filter_file
     # Ignore hidden files and folders
     unless ( defined $options->{given_path}
         and $options->{given_path} =~ /\.$/ ) {
-        return 1 if $relative =~ m{(^\.|/\.)};
+        return 1 if $relative =~ m{(^\.[^\.]|/\.[^\.])};
         return 1 if basename($file) =~ /^\./;
     }
 
@@ -655,7 +655,8 @@ Location to search in. By default it will use the current directory.
 
 NOTE: Just like I<grep>, this program will ignore hidden files (files or
 directories starting with a dot '.'), however if the path given is or ends with
-a dot '.' if will include hidden files and directories.
+a dot '.' if will include hidden files and directories. So '..' will include
+hidden files but '../' will not.
 
 =item B< -i >
 
