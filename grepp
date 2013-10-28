@@ -29,11 +29,9 @@ use strict;
         my $file = $hash->{file};
         if ( $hash->{file} ) {
             my $file = $hash->{file};
-            open $self->{input}, '<', $file
-                or warn "couldn't open $file $!\n";
             if ( $hash->{preprocessor} ) {
                 open $self->{input}, '-|',
-                    "$hash->{preprocessor} $file $hash->{preprocessor_options}"
+                    "$hash->{preprocessor} '$file' $hash->{preprocessor_options}"
                     or warn "couldn't open $file $!\n";
             }
             else {
