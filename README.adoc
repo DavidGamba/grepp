@@ -1,11 +1,11 @@
 = grepp(1)
 
-== NAME
+== Name
 
 grepp - An improved version of the most common combinations of grep, find (and
 sed, see Roadmap) in a single script.
 
-== SYNOPSYS
+== Synopsys
 
 *grepp* [*-i*] [*-l*] [*-I*] [*-n*] 'pattern' ['location'] [*--fullpath*]
     [*--name*|*--iname* 'file_pattern'] [*-v* | *--ignore* 'file_pattern']
@@ -18,7 +18,7 @@ sed, see Roadmap) in a single script.
 
 *command* | *grepp* [options] 'pattern' # pipe usage
 
-== DESCRIPTION
+== Description
 
 An improved version of the most common combinations of *grep*, *find* (and
 *sed*, see Roadmap) in a single script.
@@ -37,7 +37,7 @@ to select.
 It automatically pipes the output to your environment *PAGER* or to *less* if
 no environment value is set.
 
-== OPTIONS
+== Options
 
 'pattern':: Pattern to grep for (In regex syntax).
 
