@@ -1,0 +1,207 @@
+'\" t
+.\"     Title: grepp
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 10/28/2013
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "GREPP" "1" "10/28/2013" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+grepp \- An improved version of the most common combinations of grep, find (and sed, see Roadmap) in a single script\&.
+.SH "SYNOPSYS"
+.sp
+\fBgrepp\fR [\fB\-i\fR] [\fB\-l\fR] [\fB\-I\fR] [\fB\-n\fR] \fIpattern\fR [\fIlocation\fR] [\fB\-\-fullpath\fR] [\fB\-\-name\fR|\fB\-\-iname\fR \fIfile_pattern\fR] [\fB\-v\fR | \fB\-\-ignore\fR \fIfile_pattern\fR] [\fB\-\-color\fR \fInever\fR|\fIauto\fR|\fIalways\fR] [\fB\-\-spacing\fR] [\fB\-\-pp\fR|\fB\-\-prerocessor\fR \fIprogram\fR \fB\-\-ppo\fR \fIprogram options after filename\fR]
+.sp
+\fBgrepp\fR [\fB\-h\fR |\fB\-?\fR] # Short help
+.sp
+\fBgrepp\fR [\fB\-\-help\fR] # Extended help
+.sp
+\fBcommand\fR | \fBgrepp\fR [options] \fIpattern\fR # pipe usage
+.SH "DESCRIPTION"
+.sp
+An improved version of the most common combinations of \fBgrep\fR, \fBfind\fR (and \fBsed\fR, see Roadmap) in a single script\&.
+.sp
+It will save you time typing and copying (see Why grep\(cqs ouptut sucks) and it uses \fIREGEX\fR in your patterns\&.
+.sp
+greps \fIpattern\fR recursively from current dir or \fIlocation\fR in every file except for files in the git ignore file (TODO, see Roadmap) or given by the cmdline option\&. It also can filter by \fIfile pattern\fR\&.
+.sp
+It is inspired in grep and find, but unlike grep it doesn\(cqt print a colon : divider after the file name since that makes it annoying to double click to select\&.
+.sp
+It automatically pipes the output to your environment \fBPAGER\fR or to \fBless\fR if no environment value is set\&.
+.SH "OPTIONS"
+.PP
+\fIpattern\fR
+.RS 4
+Pattern to grep for (In regex syntax)\&.
+.RE
+.PP
+\fIlocation\fR
+.RS 4
+Location to search in\&.
+.RE
+.PP
+\fB\-i\fR
+.RS 4
+Ignore case\&.
+.RE
+.PP
+\fB\-l\fR
+.RS 4
+Print file name only\&.
+.RE
+.PP
+\fB\-I\fR
+.RS 4
+Ignore binary files\&.
+.RE
+.PP
+\fB\-\-name\fR | \fB\-\-iname\fR \fIfile_pattern\fR
+.RS 4
+Filter result to match only things that match
+\fIfile_pattern\fR\&.
+\fBiname\fR
+does case insensitive matching\&.
+.RE
+.PP
+\fB\-v\fR | \fB\-\-ignore\fR \fIfile_pattern\fR
+.RS 4
+Filter result to additionally ignore files that match
+\fIfile_pattern\fR\&. Case insensitive\&.
+.RE
+.PP
+\fB\-\-spacing\fR
+.RS 4
+Print original spacing\&. By default initial spacing is ignored\&.
+.RE
+.PP
+\fB\-\-fullpath\fR
+.RS 4
+Print full paths for matching files\&.
+.RE
+.PP
+\fB\-\-color\fR \fInever\fR|\fIauto\fR|\fIalways\fR
+.RS 4
+Select color use: never, auto (default), always\&.
+.RE
+.PP
+\fB\-\-preprocessor\fR | \fB\-\-pp\fR \fIprogram\fR
+.RS 4
+Run each file by a preprocessor program before searching for matches\&.
+.sp
+Example:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+grepp pattern \-\-iname \*(Aq\e\&.pdf\*(Aq \-\-preprocessor pdftotext \-\-ppo \*(Aq\-\*(Aq
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+To run each file with
+\fI\&.pdf\fR
+extention through the
+\fIpdftotext\fR
+program to convert pdf files to text using pdftotext before grepping\&.
+.sp
+When using the
+\fB\-\-preprocessor\fR
+option the
+\fBBINARY\fR
+filtering is disabled, you should filter results by filename extension using
+\fB\-\-name\fR
+or
+\fB\-\-iname\fR\&.
+.RE
+.PP
+\fB\-\-preprocessor\-options\fR | \fB\-\-ppo\fR \fIprogram options after filename\fR
+.RS 4
+Use this option to pass preprocessor options that MUST go after the filename, if you are using options that go before the filename then pass them in the
+\fB\-\-preprocessor\fR
+option\&.
+.RE
+.PP
+\fB\-\-context\fR \fInumber\fR
+.RS 4
+Number of lines of context to use\&. It implies
+\fB\-\-spacing\fR\&.
+.sp
+TODO: Only precontext is implemented
+.RE
+.PP
+\fB\-m\fR | \fB\-\-multi\fR \fInumber\fR
+.RS 4
+Allow grepping for regex in multiple lines\&.
+\en
+gets changed into space\&.
+\fInumber\fR
+determines how many lines plus one to look for\&.
+.RE
+.SH "WHY GREP\(cqS OUPTUT SUCKS"
+.sp
+grep prints a colon : divider after the file name since that makes it annoying to double click to select\&.
+.sp
+TODO: images here
+.SH "ROADMAP"
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Git ignore checking (waiting for ubuntu release of git 1\&.8\&.2)
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+search (done) and replace (missing)
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+post context
+.RE
+.SH "SOURCE CODE"
+.sp
+github: https://github\&.com/DavidGamba/grepp
+.SH "LICENSE"
+.sp
+Copyright (c) 2012\-2013 David Gamba\&. All rights reserved\&. This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself\&.
