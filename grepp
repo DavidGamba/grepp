@@ -222,7 +222,7 @@ sub grep_file
     $logger->debug("Using git grep");
     my @cmd = ();
     if ( $options->{git_repo} ) {
-        push @cmd, ( 'git', 'grep', '-P', '--color=always' );
+        push @cmd, ( 'git', 'grep', '-P', '--color=always', '--untracked' );
     }
     else {
         push @cmd, ( 'grep', '-P', '-R', '--color=always' );
