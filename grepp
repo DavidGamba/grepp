@@ -1,0 +1,410 @@
+#!/usr/bin/perl -w
+use strict;
+use v5.10.1;
+
+# Copyright (c) 2012-2013 David Gamba. All rights reserved. This program is free
+# software; you can redistribute it and/or modify it under the same terms as
+# Perl itself.
+
+__PACKAGE__->run() unless caller();
+
+{
+    package Logger;
+    sub new
+    {
+        my $class = shift;
+        my $self  = {};
+        bless $self, $class;
+        $self->initialize(@_);
+        return $self;
+    }
+
+    sub initialize
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        $self->{level} = $hash->{level};
+    }
+
+    sub trace
+    {
+      my $self = shift;
+      print "[TRACE] @_\n" if $self->{level} >= 2;
+    }
+
+    sub debug
+    {
+      my $self = shift;
+      print "[DEBUG] @_\n" if $self->{level} >= 1;
+    }
+}
+
+sub run
+{
+  use Getopt::Long qw(:config passthrough no_ignore_case);
+  use Pod::Usage;
+  use Data::Dumper;
+  use Cwd qw(cwd abs_path);
+  use File::Spec::Functions qw( abs2rel );
+  use File::Find;
+  use File::Basename;
+
+  GetOptions(
+    'h|?'  => sub { pod2usage( -verbose => 0 ) },
+    'help' => sub { pod2usage( -verbose => 3 ) },
+  );
+  my %options = ();
+  GetOptions(
+    \%options,
+    'debug=i',
+    'context|C=i',
+    'ignore-case|i',
+    'max-count|m=i',
+    'line-number|n',
+    'color',
+    'spacing',
+  );
+  $options{debug} = $options{debug} || 0;
+  my $logger = Logger->new( { level => $options{debug} } );
+  $logger->trace("argv @ARGV");
+  for my $index (0 .. $#ARGV) {
+    unless( $ARGV[$index] =~ /^-/ ) {
+      $logger->trace($ARGV[$index]);
+      $options{search_pattern} = $ARGV[$index];
+      splice(@ARGV, $index, 1);
+      last;
+    }
+  }
+  for my $index (0 .. $#ARGV) {
+    unless( $ARGV[$index] =~ /^-/ ) {
+      $logger->trace($ARGV[$index]);
+      $options{given_path} = $ARGV[$index];
+      splice(@ARGV, $index, 1);
+      last;
+    }
+  }
+  @_ = @ARGV;
+  pod2usage("[ERROR] Missing search pattern!\n")
+  unless defined $options{search_pattern};
+
+  if ( $options{color} ) {
+    pod2usage("[ERROR] wrong color argument!\n")
+    unless $options{color} eq 'never'
+      or $options{color} eq 'always'
+      or $options{color} eq 'auto';
+  }
+
+  @{$options{grep_pass_through}} = @_;
+
+  # Set pager and color if not piped output
+  if ($options{debug} >= 2) {
+    $options{color} ||= 'always';
+  }
+  else {
+    END { close STDOUT }
+    if ( -t STDOUT ) {
+      my $pager = $ENV{PAGER} || "less";
+      open( STDOUT, "| $pager" );
+      if($options{color} and $options{color} eq 'auto') {
+        $options{color} = 'always'
+      }
+      $options{color} = 'always' unless $options{color};
+    }
+  }
+
+  my $color = Color->new( { color => $options{color} } );
+  $options{color_object} = $color;
+  $options{logger_object} = $logger;
+
+  if ( -t STDIN ) {
+    # print "STDIN\n";
+    grep_file( \%options );
+  }
+  else {
+    grep_file( \%options );
+  }
+
+  close STDOUT;
+}
+
+{
+    package Color;
+    use Term::ANSIColor;
+
+    sub new
+    {
+        my $class = shift;
+        my $self  = {};
+        bless $self, $class;
+        $self->initialize(@_);
+        return $self;
+    }
+
+    sub initialize
+    {
+        my $self = shift;
+        my $hash = shift;
+
+        $self->{file_color}   = $hash->{file_color}   || 'magenta';
+        $self->{divider}      = $hash->{divider}      || 'blue';
+        $self->{match_color}  = $hash->{match_color}  || 'bold red';
+        $self->{number_color} = $hash->{number_color} || 'green';
+
+        $self->{color} = $hash->{color} || '';
+        $self->{debug} = $hash->{debug};
+    }
+
+    sub debug
+    {
+        my $self = shift;
+        $self->{debug} = shift;
+    }
+
+    sub set_color
+    {
+        my $self = shift;
+        my $c    = shift;
+        $c ||= 'reset';
+        if ( $self->{color} eq 'always' ) {
+          for ($c) {
+            when('file_color') { print color $self->{file_color} }
+            when('divider') { print color $self->{divider} }
+            when('match_color') { print color $self->{match_color} }
+            when('number_color') { print color $self->{number_color} }
+            default { print color 'reset' }
+          }
+        }
+    }
+
+    sub print_file
+    {
+        my $self = shift;
+        print "[DEBUG] print_file @_\n" if $self->{debug};
+        $self->set_color('file_color');
+        print "@_";
+        $self->set_color('reset');
+    }
+
+    sub print_divider
+    {
+        my $self = shift;
+        print "[DEBUG] print_divider @_\n" if $self->{debug};
+        $self->set_color('divider');
+        print "@_";
+        $self->set_color('reset');
+    }
+
+    sub print_match
+    {
+        my $self = shift;
+        print "[DEBUG] print_match @_\n" if $self->{debug};
+        $self->set_color('match_color');
+        print "@_";
+        $self->set_color('reset');
+    }
+
+    sub print_number
+    {
+        my $self = shift;
+        print "[DEBUG] print_number @_\n" if $self->{debug};
+        $self->set_color('number_color');
+        print "@_";
+        $self->set_color('reset');
+    }
+}
+
+sub grep_file
+{
+  my $options = shift;
+
+  my $logger = $options->{logger_object};
+  $logger->trace( Dumper $options);
+
+  my @cmd = ('grep', '-P', '-R', '--color=always');
+  if($options->{context}) {
+    push @cmd, '-C', $options->{context};
+  }
+  if($options->{'ignore-case'}) {
+    push @cmd, '--ignore-case';
+  }
+  if($options->{'line-number'}) {
+    push @cmd, '--line-number';
+  }
+  if($options->{'max-count'}) {
+    push @cmd, '--max-count', $options->{'max-count'};
+  }
+  push @cmd, $options->{search_pattern};
+  if( $options->{given_path} ) {
+    push @cmd, $options->{given_path};
+  }
+  else {
+    push @cmd, '.';
+  }
+  push @cmd, @{$options->{grep_pass_through}};
+  $logger->debug("@cmd");
+  open my $input, '-|', @cmd or warn "[ERROR] $!\n";
+  while(<$input>) {
+    modify_output($options, $_);
+  }
+}
+
+sub modify_output
+{
+  my $options = shift;
+  my $line    = shift;
+
+  my $logger = $options->{logger_object};
+
+  local $_ = $line;
+
+  $logger->debug($line);
+  my $ansi_color = qr/\e\[(?:\d+)*(?:;\d+)*m(?:\e\[K)?/;
+  my @line = split( /$ansi_color/, $line);
+  my $count = 0;
+  if( $options->{debug} >= 2) {
+    $logger->trace();
+    foreach my $section (@line) {
+      if ($section) {
+        print "$count=$section\n" ;
+      }
+      else {
+        print "$count=undef\n" ;
+      }
+      $count++;
+    }
+  }
+  my $color = $options->{color_object};
+  # $color->debug(1);
+
+  if($#line == 0) {
+    $logger->trace("grep context divider\n");
+    print $line[0];
+  }
+  elsif($#line >=1 and $#line < 3 and $line[1] eq '--') {
+    $logger->trace("grep context divider\n");
+    $color->print_divider($line[1]);
+    print "\n";
+  }
+  elsif($options->{given_path} and -f $options->{given_path}) {
+    $logger->trace("single file\n");
+    print_rest($options, @line)
+  }
+  elsif($#line > 3 and $line[3] eq '-') {
+    $color->print_file($line[1]);
+    print " ";
+    $color->print_divider($line[3]);
+    $color->set_color();
+    print " ";
+    print @line[4 .. $#line];
+  }
+  elsif($#line > 3 and $line[3] eq ':') {
+    $color->print_file($line[1]);
+    print " ";
+    $color->print_divider($line[3]);
+    $color->set_color();
+    my $rest = 4;
+    if($options->{'line-number'}) {
+      $color->print_number($line[5]);
+      $color->print_divider($line[7]);
+      $rest = 8;
+    }
+    print " ";
+    print_rest($options, @line[$rest .. $#line])
+  }
+}
+
+sub print_rest
+{
+  my $options = shift;
+  my $first_time = 1;
+  foreach my $e (@_) {
+    if( defined $e ) {
+      if($options->{'ignore-case'} and $e =~ /$options->{search_pattern}/i) {
+        $options->{color_object}->print_match($e);
+      }
+      elsif($e =~ /$options->{search_pattern}/) {
+        $options->{color_object}->print_match($e);
+      }
+      else {
+        unless($options->{spacing}) {
+          if($first_time) {
+            $e =~ s/^\s+//;
+            $first_time = 0;
+          }
+        }
+        print $e;
+      }
+    }
+  }
+}
+
+__END__
+
+=head1 NAME
+
+grepp
+
+=head1 DESCRIPTION
+
+greps B<pattern> recursively from current dir or B<location> in every file
+except for files in the git ignore file or given by the cmdline option.
+
+It is inspired in grep, but unlike grep it doesn't print a ':'
+divider right after the file name since that makes it annoying to double click
+to select, it adds a space before and after the ':' divider.
+
+As it is expected, the color only shows when the ouput is not being
+piped. See B<--color> for more details.
+
+It automatically pipes the output to your environment B<PAGER> or to B<less> if
+no environment value is set.
+
+=head1 SYNOPSIS
+
+  grepp [most grep options] I<pattern> [I<location>]
+        [--spacing]
+
+  grepp [--help]       # shows extended help
+
+  grepp [-h |-?]       # shows short help
+
+=head1 OPTIONS
+
+=over 4
+
+=item I<pattern>
+
+Pattern to grep for (In regex syntax).
+
+=item I<location>
+
+Location to search in. By default it will use the current directory.
+
+=item B< -i >
+
+Ignore case
+
+=item B< -l >
+
+Print file name only
+
+=item B< -I >
+
+Ignore binary files
+
+=item B<< --spacing >>
+
+Print original spacing. By default initial spacing is ignored.
+
+=item B<< --color >> I<never>|I<auto>|I<always>
+
+Select color use: never, auto (default), always
+
+=back
+
+=head1 BUG REPORTS
+
+David Gamba
+
+=cut
