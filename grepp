@@ -58,7 +58,7 @@ sub run
     );
     my %options = ();
     GetOptions( \%options, 'debug=i', 'context|C=i', 'ignore-case|i',
-        'max-count|m=i', 'line-number|n', 'color', 'spacing', );
+        'max-count|m=i', 'line-number|n', 'color', 'spacing', 'ignore-file|if=s@' );
     $options{debug} = $options{debug} || 0;
     my $logger = Logger->new( { level => $options{debug} } );
     $logger->trace("argv @ARGV");
@@ -321,6 +321,14 @@ sub modify_output
         print_rest( $options, @line );
     }
     elsif ( $#line > $divider_index and $line[$divider_index] eq '-' ) {
+        if ( $options->{'ignore-file'} ) {
+          foreach my $ignore_file (@{$options->{'ignore-file'}}){
+              if($line[$file_index] =~ /$ignore_file/i) {
+                  # $color->print_debug( $line[$file_index] . "\n" );
+                  return 1;
+              }
+          }
+        }
         $color->print_file( $line[$file_index] );
         print " ";
         $color->print_divider( $line[$divider_index] );
@@ -335,6 +343,14 @@ sub modify_output
         print_rest( $options, @line[ $rest .. $#line ] );
     }
     elsif ( $#line > $divider_index and $line[$divider_index] eq ':' ) {
+        if ( $options->{'ignore-file'} ) {
+          foreach my $ignore_file (@{$options->{'ignore-file'}}){
+              if($line[$file_index] =~ /$ignore_file/i) {
+                  # $color->print_debug( $line[$file_index] . "\n" );
+                  return 1;
+              }
+          }
+        }
         $color->print_file( $line[$file_index] );
         print " ";
         $color->print_divider( $line[$divider_index] );
@@ -399,12 +415,12 @@ no environment value is set.
 
 =head1 SYNOPSIS
 
-  grepp [most grep options] I<pattern> [I<location>]
-        [--spacing]
+grepp [most grep options] I<pattern> [I<location>]
+      [--spacing] [--ignore-file I<file_pattern>]
 
-  grepp [--help]       # shows extended help
+grepp [--help]       # shows extended help
 
-  grepp [-h |-?]       # shows short help
+grepp [-h |-?]       # shows short help
 
 =head1 OPTIONS
 
@@ -429,6 +445,10 @@ Print file name only
 =item B< -I >
 
 Ignore binary files
+
+=item B<< --ignore-file >> | B<< --if >> I<file_pattern>
+
+Ignore files matching I<file_pattern> regex. Can be used more than one.
 
 =item B<< --spacing >>
 
