@@ -143,6 +143,7 @@ sub run
         my $self = shift;
         my $hash = shift;
 
+        $self->{debug_color}  = $hash->{debug_color}  || 'red';
         $self->{file_color}   = $hash->{file_color}   || 'magenta';
         $self->{divider}      = $hash->{divider}      || 'blue';
         $self->{match_color}  = $hash->{match_color}  || 'bold red';
@@ -165,6 +166,7 @@ sub run
         $c ||= 'reset';
         if ( $self->{color} eq 'always' ) {
             for ($c) {
+                when ('debug_color')  { print color $self->{debug_color} }
                 when ('file_color')   { print color $self->{file_color} }
                 when ('divider')      { print color $self->{divider} }
                 when ('match_color')  { print color $self->{match_color} }
@@ -172,6 +174,15 @@ sub run
                 default               { print color 'reset' };
             }
         }
+    }
+
+    sub print_debug
+    {
+        my $self = shift;
+        print "[DEBUG] print_file @_\n" if $self->{debug};
+        $self->set_color('debug_color');
+        print "@_";
+        $self->set_color('reset');
     }
 
     sub print_file
