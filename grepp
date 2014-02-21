@@ -464,4 +464,14 @@ Select color use: never, auto (default), always
 
 David Gamba
 
+=head1 Source code
+
+github: <https://github.com/DavidGamba/grepp>
+
+=head1 License
+
+Copyright (C) 2012-2014 David Gamba. All rights reserved. This program is free
+software; you can redistribute it and/or modify it under the same terms as Perl
+itself.
+
 =cut

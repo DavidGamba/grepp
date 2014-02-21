@@ -7,10 +7,8 @@ sed, see Roadmap) in a single script.
 
 == Synopsys
 
-*grepp* [*-i*] [*-l*] [*-I*] [*-n*] 'pattern' ['location'] [*--fullpath*]
-    [*--name*|*--iname* 'file_pattern'] [*-v* | *--ignore* 'file_pattern']
-    [*--color* 'never'|'auto'|'always'] [*--spacing*]
-    [*--pp*|*--prerocessor* 'program' *--ppo* 'program options after filename']
+*grepp* [*most grep options*] 'pattern' ['location']
+      [*--if* | *--ignore-file* 'file_pattern'] [*--spacing*]
 
 *grepp* [*-h* |*-?*] # Short help
 
@@ -19,29 +17,28 @@ sed, see Roadmap) in a single script.
 *command* | *grepp* [options] 'pattern' # pipe usage
 
 == Description
+greps 'pattern' recursively from current dir or 'location' in every file
+except for files in the git ignore file or given by the cmdline option.
 
-An improved version of the most common combinations of *grep*, *find* (and
-*sed*, see Roadmap) in a single script.
+It is inspired in grep, but unlike grep it doesn't print a *:*
+divider right after the file name since that makes it annoying to double click
+to select, it adds a space before and after the *:* divider.
 
-It will save you time typing and copying (see Why grep's ouptut sucks) and
-it uses 'REGEX' in your patterns.
-
-greps 'pattern' recursively from current dir or 'location' in every file except
-for files in the git ignore file (TODO, see Roadmap) or given by the
-cmdline option. It also can filter by 'file pattern'.
-
-It is inspired in grep and find, but unlike grep it doesn't print a colon +:+
-divider after the file name since that makes it annoying to double click
-to select.
+As it is expected, the color only shows when the ouput is not being
+piped. See *--color* for more details.
 
 It automatically pipes the output to your environment *PAGER* or to *less* if
 no environment value is set.
 
 == Options
 
-'pattern':: Pattern to grep for (In regex syntax).
+'pattern'::
 
-'location':: Location to search in.
+Pattern to grep for (In regex syntax).
+
+'location'::
+
+Location to search in. By default it will use the current directory.
 
 *-i*:: Ignore case.
 
@@ -49,59 +46,27 @@ no environment value is set.
 
 *-I*:: Ignore binary files.
 
-*--name* | *--iname* 'file_pattern'::
+*TODO* *--name* | *--iname* 'file_pattern'::
 
-Filter result to match only things that match 'file_pattern'. *iname* does case
+filter result to match only things that match 'file_pattern'. *iname* does case
 insensitive matching.
 
-*-v* | *--ignore* 'file_pattern'::
+*--if* | *--ignore-file* 'file_pattern'::
 
-Filter result to additionally ignore files that match 'file_pattern'. Case
-insensitive.
+Ignore files matching 'file_pattern' regex. Can be used more than one.
+Case insensitive.
+
+*TODO* *--fullpath*::
+
+Print full paths for matching files.
 
 *--spacing*::
 
 Print original spacing. By default initial spacing is ignored.
 
-*--fullpath*::
-
-Print full paths for matching files.
-
 *--color* 'never'|'auto'|'always'::
 
 Select color use: never, auto (default), always.
-
-*--preprocessor* | *--pp* 'program'::
-
-Run each file by a preprocessor program before searching for matches.
-+
-Example:
-
-  grepp pattern --iname '\.pdf' --preprocessor pdftotext --ppo '-'
-+
-To run each file with '.pdf' extention through the
-'pdftotext' program to convert pdf files to text using pdftotext before
-grepping.
-+
-When using the *--preprocessor* option the *BINARY* filtering is disabled, you
-should filter results by filename extension using *--name* or *--iname*.
-
-*--preprocessor-options* | *--ppo* 'program options after filename'::
-
-Use this option to pass preprocessor options that MUST go after the filename,
-if you are using options that go before the filename then pass them in the
-*--preprocessor* option.
-
-*--context* 'number'::
-
-Number of lines of context to use. It implies *--spacing*.
-+
-TODO: Only precontext is implemented
-
-*-m* | *--multi* 'number'::
-
-Allow grepping for regex in multiple lines. `\n` gets changed into space.
-'number' determines how many lines plus one to look for.
 
 == Why grep's ouptut sucks
 
@@ -112,9 +77,8 @@ TODO: images here
 
 == Roadmap
 
-* Git ignore checking (waiting for ubuntu release of git 1.8.2)
+* Fine tune git grep usage
 * search (done) and replace (missing)
-* post context
 
 == Source code
 
@@ -122,6 +86,6 @@ github: <https://github.com/DavidGamba/grepp>
 
 == License
 
-Copyright (C) 2012-2013 David Gamba. All rights reserved. This program is free
+Copyright (C) 2012-2014 David Gamba. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as Perl
 itself.
