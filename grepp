@@ -57,8 +57,13 @@ sub run
         'help' => sub { pod2usage( -verbose => 3 ) },
     );
     my %options = ();
-    GetOptions( \%options, 'debug=i', 'context|C=i', 'ignore-case|i',
-        'max-count|m=i', 'line-number|n', 'color', 'spacing', 'ignore-file|if=s@' );
+    GetOptions(
+        \%options,           'debug=i',
+        'context|C=i',       'ignore-case|i',
+        'max-count|m=i',     'line-number|n',
+        'color',             'spacing',
+        'ignore-file|if=s@', 'name|iname=s@'
+    );
     $options{debug} = $options{debug} || 0;
     my $logger = Logger->new( { level => $options{debug} } );
     $logger->trace("argv @ARGV");
@@ -329,6 +334,16 @@ sub modify_output
               }
           }
         }
+        if ( $options->{'name'} ) {
+          my $name_flag = 0;
+          foreach my $name (@{$options->{'name'}}){
+              if($line[$file_index] =~ /$name/i) {
+                  # $color->print_debug( $line[$file_index] . "\n" );
+                  $name_flag = 1;
+              }
+          }
+          return 2 unless $name_flag == 1;
+        }
         $color->print_file( $line[$file_index] );
         print " ";
         $color->print_divider( $line[$divider_index] );
@@ -350,6 +365,16 @@ sub modify_output
                   return 1;
               }
           }
+        }
+        if ( $options->{'name'} ) {
+          my $name_flag = 0;
+          foreach my $name (@{$options->{'name'}}){
+              if($line[$file_index] =~ /$name/i) {
+                  # $color->print_debug( $line[$file_index] . "\n" );
+                  $name_flag = 1;
+              }
+          }
+          return 2 unless $name_flag == 1;
         }
         $color->print_file( $line[$file_index] );
         print " ";
