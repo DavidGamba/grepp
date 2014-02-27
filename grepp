@@ -99,7 +99,7 @@ sub run
     else {
         END { close STDOUT }
         if ( -t STDOUT ) {
-            my $pager = $ENV{PAGER} || "less";
+            my $pager = $ENV{PAGER} || "less -R";
             open( STDOUT, "| $pager" );
             if ( $options{color} and $options{color} eq 'auto' ) {
                 $options{color} = 'always';
