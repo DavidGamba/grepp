@@ -325,11 +325,12 @@ sub modify_output
         $logger->trace("single file\n");
         print_rest( $options, @line );
     }
-    elsif ( $#line > $divider_index and $line[$divider_index] eq '-' ) {
+    elsif ( $#line > $divider_index and
+            ( $line[$divider_index] eq '-' or $line[$divider_index] eq ':' )
+          ) {
         if ( $options->{'ignore-file'} ) {
           foreach my $ignore_file (@{$options->{'ignore-file'}}){
               if($line[$file_index] =~ /$ignore_file/i) {
-                  # $color->print_debug( $line[$file_index] . "\n" );
                   return 1;
               }
           }
@@ -338,39 +339,6 @@ sub modify_output
           my $name_flag = 0;
           foreach my $name (@{$options->{'name'}}){
               if($line[$file_index] =~ /$name/i) {
-                  # $color->print_debug( $line[$file_index] . "\n" );
-                  $name_flag = 1;
-              }
-          }
-          return 2 unless $name_flag == 1;
-        }
-        $color->print_file( $line[$file_index] );
-        print " ";
-        $color->print_divider( $line[$divider_index] );
-        $color->set_color();
-        my $rest = $divider_index + 1;
-        if ( $options->{'line-number'} ) {
-            $color->print_number( $line[$number_index] );
-            $color->print_divider( $line[$second_divider_index] );
-            $rest = $second_divider_index + 1;
-        }
-        print " ";
-        print_rest( $options, @line[ $rest .. $#line ] );
-    }
-    elsif ( $#line > $divider_index and $line[$divider_index] eq ':' ) {
-        if ( $options->{'ignore-file'} ) {
-          foreach my $ignore_file (@{$options->{'ignore-file'}}){
-              if($line[$file_index] =~ /$ignore_file/i) {
-                  # $color->print_debug( $line[$file_index] . "\n" );
-                  return 1;
-              }
-          }
-        }
-        if ( $options->{'name'} ) {
-          my $name_flag = 0;
-          foreach my $name (@{$options->{'name'}}){
-              if($line[$file_index] =~ /$name/i) {
-                  # $color->print_debug( $line[$file_index] . "\n" );
                   $name_flag = 1;
               }
           }
