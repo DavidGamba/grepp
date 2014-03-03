@@ -372,9 +372,11 @@ sub modify_output
 sub print_rest
 {
     my $options    = shift;
+    my $logger = $options->{logger_object};
     my $first_time = 1;
     foreach my $e (@_) {
         if ( defined $e ) {
+            $logger->trace("defined rest\n");
             if (    $options->{'ignore-case'}
                 and $e =~ /$options->{search_pattern}/i ) {
                 $options->{color_object}->print_match($e);
@@ -385,8 +387,10 @@ sub print_rest
             else {
                 unless ( $options->{spacing} ) {
                     if ($first_time) {
-                        $e =~ s/^\s+//;
+                        $logger->trace("Before removing spacing: -$e-\n");
+                        $e =~ s/^[ \f\r\t]//;
                         $first_time = 0;
+                        $logger->trace("After removing spacing: -$e-\n");
                     }
                 }
                 print $e;
