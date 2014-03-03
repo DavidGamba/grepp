@@ -62,7 +62,8 @@ sub run
         'context|C=i',       'ignore-case|i',
         'max-count|m=i',     'line-number|n',
         'color',             'spacing',
-        'ignore-file|if=s@', 'name|iname=s@'
+        'ignore-file|if=s@', 'name=s@',
+        'iname=s@'
     );
     $options{debug} = $options{debug} || 0;
     my $logger = Logger->new( { level => $options{debug} } );
@@ -338,6 +339,15 @@ sub modify_output
         if ( $options->{'name'} ) {
           my $name_flag = 0;
           foreach my $name (@{$options->{'name'}}){
+              if($line[$file_index] =~ /$name/) {
+                  $name_flag = 1;
+              }
+          }
+          return 2 unless $name_flag == 1;
+        }
+        if ( $options->{'iname'} ) {
+          my $name_flag = 0;
+          foreach my $name (@{$options->{'iname'}}){
               if($line[$file_index] =~ /$name/i) {
                   $name_flag = 1;
               }
