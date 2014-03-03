@@ -2,13 +2,15 @@
 
 == Name
 
-grepp - An improved version of the most common combinations of grep, find (and
-sed, see Roadmap) in a single script.
+grepp - An improved version of the most common combinations of grep (and git
+grep), find (and sed, see Roadmap) in a single script.
 
 == Synopsys
 
 *grepp* [*most grep options*] 'pattern' ['location']
       [*--if* | *--ignore-file* 'file_pattern'] [*--spacing*]
+      [*--context*|*-C* 'NUM' ] [-'NUM'] [*--line-number*|*-n*]
+      [*--debug* 'level']
 
 *grepp* [*-h* |*-?*] # Short help
 
@@ -18,19 +20,28 @@ sed, see Roadmap) in a single script.
 
 == Description
 greps 'pattern' recursively from current dir or 'location' in every file
-except for files in the git ignore file or given by the cmdline option.
+except for files in the *git ignore file* or given by the cmdline option.
 
-It is inspired in grep, but unlike grep it doesn't print a *:*
-divider right after the file name since that makes it annoying to double click
-to select, it adds a space before and after the *:* divider.
+Depending on your working directory it will select *grep* or *git grep*.
+
+NOTE: Not all *grep* options are valid *git grep* options and viceversa.
+
+It is inspired in grep, but unlike grep it doesn't print a *:* divider right
+after the file name since that makes it annoying to double click to select,
+it adds a space before and after the *:* divider.
 
 As it is expected, the color only shows when the ouput is not being
 piped. See *--color* for more details.
 
-It automatically pipes the output to your environment *PAGER* or to *less* if
-no environment value is set.
+It automatically pipes the output to your environment *PAGER* or to +less
+-R+ if no environment value is set.
 
 == Options
+
+Most *grep* options are supported, the list below is only a subset of the
+full list of options available.
+
+NOTE: Some options
 
 'pattern'::
 
@@ -40,7 +51,7 @@ Pattern to grep for (In regex syntax).
 
 Location to search in. By default it will use the current directory.
 
-*-i*:: Ignore case.
+*-i* | *--ignore-case*:: Ignore case.
 
 *-l*:: Print file name only.
 
@@ -48,8 +59,8 @@ Location to search in. By default it will use the current directory.
 
 *TODO* *--name* | *--iname* 'file_pattern'::
 
-filter result to match only things that match 'file_pattern'. *iname* does case
-insensitive matching.
+filter result to match only things that match 'file_pattern'. *iname* does
+case insensitive matching.
 
 *--if* | *--ignore-file* 'file_pattern'::
 
@@ -63,6 +74,26 @@ Print full paths for matching files.
 *--spacing*::
 
 Print original spacing. By default initial spacing is ignored.
+
+*-C* 'NUM', -'NUM', *--context*='NUM'::
+
+Print 'NUM' lines of output context. Places a line containing a group
+separator (--) between contiguous groups of matches.  With the -o or
+--only-matching option, this has no effect and a warning is given.
+
+*-m* 'NUM', *--max-count*='NUM'::
+
+NOTE: Not available in *git grep*.
++
+Stop reading a file after 'NUM' matching lines. If the input is standard
+input from a regular file, and 'NUM' matching lines are output, grep ensures
+that the standard input is positioned to just after the last matching line
+before exiting, regardless of the presence  of trailing context lines.
+This enables a calling process to resume a search. When grep stops after
+'NUM' matching lines, it outputs any trailing context lines. When the *-c*
+or *--count* option is also used, grep does not output a count greater than
+'NUM'. When  the  *-v*  or *--invert-match* option is also used, grep
+stops after outputting 'NUM' non-matching lines.
 
 *--color* 'never'|'auto'|'always'::
 
@@ -86,6 +117,6 @@ github: <https://github.com/DavidGamba/grepp>
 
 == License
 
-Copyright (C) 2012-2014 David Gamba. All rights reserved. This program is free
-software; you can redistribute it and/or modify it under the same terms as Perl
-itself.
+Copyright (C) 2012-2014 David Gamba. All rights reserved. This program is
+free software; you can redistribute it and/or modify it under the same terms
+as Perl itself.
