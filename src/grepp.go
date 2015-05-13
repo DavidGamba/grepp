@@ -28,7 +28,7 @@ func isText(filename string) bool {
 	return strings.HasPrefix(s, "text/")
 }
 
-func getFileList(filename string) bool {
+func getFileList(filename string, c chan string, ignoreDirs bool) {
 	// log.Printf("filename: %s", filename)
 	fInfo, err := os.Stat(filename)
 	if err != nil {
@@ -36,6 +36,9 @@ func getFileList(filename string) bool {
 		log.Fatal(err)
 	}
 	if fInfo.IsDir() {
+		if ignoreDirs == false {
+			c <- filename
+		}
 		fileMatches, err := filepath.Glob(filename + string(filepath.Separator) + "*")
 		if err != nil {
 			println("error: ", err)
@@ -46,17 +49,23 @@ func getFileList(filename string) bool {
 				continue
 			}
 			// println("result: " + file)
-			getFileList(file)
+			d := make(chan string)
+			go getFileList(file, d, ignoreDirs)
+			c <- <-d
 		}
 	} else {
-		fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
+		c <- filename
 	}
-	return true
+	close(c)
 }
 
 func main() {
 	log.Printf("args: %s", os.Args[1:])
+	c := make(chan string)
 	for _, v := range os.Args[1:] {
-		getFileList(v)
+		go getFileList(v, c, true)
+	}
+	for filename := range c {
+		fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
 	}
 }
