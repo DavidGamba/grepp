@@ -70,16 +70,53 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	return c
 }
 
+func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
+	var re *regexp.Regexp
+	if ignoreCase {
+		re = regexp.MustCompile(`(?i)` + pattern)
+	} else {
+		re = regexp.MustCompile(pattern)
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		match := re.MatchString(scanner.Text())
+		if match {
+			return true
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return false
+}
+
 type lineMatch struct {
 	filename string
 	n        int
-	match    string
+	match    [][]string
+	end      []string
+	line     string
 }
 
-func scanFile(filename string, pattern string) <-chan lineMatch {
+func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-chan lineMatch {
 	c := make(chan lineMatch)
+	var re *regexp.Regexp
+	var reEnd *regexp.Regexp
+	if ignoreCase {
+		re = regexp.MustCompile(`(?i)(.*?)(?P<pattern>` + pattern + `)`)
+		reEnd = regexp.MustCompile(`(?i).*` + pattern + `(.*?)$`)
+	} else {
+		re = regexp.MustCompile(`(.*?)(?P<pattern>` + pattern + `)`)
+		reEnd = regexp.MustCompile(`.*` + pattern + `(.*?)$`)
+	}
 	go func() {
-		re := regexp.MustCompile(pattern)
 		file, err := os.Open(filename)
 		if err != nil {
 			log.Fatal(err)
@@ -90,10 +127,10 @@ func scanFile(filename string, pattern string) <-chan lineMatch {
 		n := 0
 		for scanner.Scan() {
 			n += 1
-			match := re.FindStringSubmatch(scanner.Text())
+			match := re.FindAllStringSubmatch(scanner.Text(), -1)
+			remainder := reEnd.FindStringSubmatch(scanner.Text())
 			if len(match) != 0 {
-				// fmt.Printf("1. %s\n", match[1])
-				c <- lineMatch{filename: filename, n: n, match: scanner.Text()}
+				c <- lineMatch{filename: filename, n: n, line: scanner.Text(), match: match, end: remainder}
 			}
 		}
 
@@ -106,7 +143,23 @@ func scanFile(filename string, pattern string) <-chan lineMatch {
 }
 
 func printLineMatch(lm lineMatch) {
-	fmt.Printf("%s%s%s :%s%d%s:%s %s\n", ansi.Magenta, lm.filename, ansi.Blue, ansi.Green, lm.n, ansi.Blue, ansi.Reset, lm.match)
+	fmt.Printf("%s%s%s :%s%d%s:%s ", ansi.Magenta, lm.filename, ansi.Blue, ansi.Green, lm.n, ansi.Blue, ansi.Reset)
+
+	// fmt.Printf("%s\n", lm.line)
+	// fmt.Printf("%q\n", lm.match)
+	for _, m := range lm.match {
+		fmt.Printf("%s%s%s%s", m[1], ansi.Red, m[2], ansi.Reset)
+	}
+	fmt.Printf("%s\n", lm.end[1])
+	// fmt.Printf("%q\n", lm.end)
+
+	// for i, n := range lm.match {
+	// 	for i, m := range lm.matchNames[i] {
+	// 		fmt.Printf("%d. match='%s', name='%s', m='%s'\n", i, n, m, lm.matchNames[i])
+	// 	}
+	// }
+	// fmt.Printf("The names are  : %v\n", lm.matchNames)
+	// fmt.Printf("The matches are: %v\n", lm.match)
 }
 
 func main() {
@@ -115,6 +168,7 @@ func main() {
 	searchBase := os.Args[1]
 	pattern := os.Args[2]
 	ignoreBinary := true
+	ignoreCase := true
 
 	c := getFileList(searchBase, true)
 
@@ -123,8 +177,10 @@ func main() {
 		if ignoreBinary == true && !isText(filename) {
 			continue
 		}
-		for d := range scanFile(filename, pattern) {
-			printLineMatch(d)
+		if checkPatternInFile(filename, pattern, ignoreCase) {
+			for d := range searchAndReplaceInFile(filename, pattern, ignoreCase) {
+				printLineMatch(d)
+			}
 		}
 	}
 }
