@@ -29,40 +29,44 @@ func isText(filename string) bool {
 	return strings.HasPrefix(s, "text/")
 }
 
-func getFileList(filename string, c chan string, ignoreDirs bool) {
-	log.Printf("getFileList: %s", filename)
-	fInfo, err := os.Stat(filename)
-	if err != nil {
-		println("cannot stat", filename)
-		log.Fatal(err)
-	}
-	if fInfo.IsDir() {
-		if ignoreDirs == false {
-			c <- filename
-		}
-		fileSearch := filename + string(filepath.Separator) + "*"
-		log.Printf("file search: %s", fileSearch)
-		fileMatches, err := filepath.Glob(fileSearch)
+func getFileList(filename string, ignoreDirs bool) <-chan string {
+	// log.Printf("getFileList: %s", filename)
+	c := make(chan string)
+	go func() {
+		fInfo, err := os.Stat(filename)
 		if err != nil {
-			println("error: ", err)
+			println("cannot stat", filename)
 			log.Fatal(err)
 		}
-		log.Printf("fileMatches: %s", fileMatches)
-		fileChannels := make([]chan string, 0)
-		for _, file := range fileMatches {
-			if filepath.Base(filename) == filepath.Base(file) {
-				log.Printf("skipping: %s", filename)
-				continue
+		if fInfo.IsDir() {
+			if ignoreDirs == false {
+				c <- filename
 			}
-			log.Printf("go: %s", file)
-			fileChannels = append(fileChannels, make(chan string))
-			go getFileList(file, fileChannels[len(fileChannels)-1], ignoreDirs)
-			c <- <-fileChannels[len(fileChannels)-1]
+			fileSearch := filename + string(filepath.Separator) + "*"
+			// log.Printf("file search: %s", fileSearch)
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				println("error: ", err)
+				log.Fatal(err)
+			}
+			// log.Printf("fileMatches: %s", fileMatches)
+			for _, file := range fileMatches {
+				if filepath.Base(filename) == filepath.Base(file) {
+					log.Printf("skipping: %s", filename)
+					continue
+				}
+				// log.Printf("go: %s", file)
+				d := getFileList(file, ignoreDirs)
+				for dirFile := range d {
+					c <- dirFile
+				}
+			}
+		} else {
+			c <- filename
 		}
-	} else {
-		c <- filename
-	}
-	// close(c)
+		close(c)
+	}()
+	return c
 }
 
 func scanFile(filename string, pattern string, c chan string) {
@@ -95,8 +99,7 @@ func main() {
 	// pattern := os.Args[2]
 	ignoreBinary := true
 
-	c := make(chan string)
-	go getFileList(searchBase, c, true)
+	c := getFileList(searchBase, true)
 
 	// sliceFileRead := make([]chan string, 0)
 	// log.Printf("slice: %s", sliceFileRead)
