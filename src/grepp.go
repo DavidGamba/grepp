@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/mgutz/ansi"
 	"log"
 	"net/http"
 	"os"
@@ -69,8 +70,14 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	return c
 }
 
-func scanFile(filename string, pattern string) <-chan string {
-	c := make(chan string)
+type lineMatch struct {
+	filename string
+	n        int
+	match    string
+}
+
+func scanFile(filename string, pattern string) <-chan lineMatch {
+	c := make(chan lineMatch)
 	go func() {
 		re := regexp.MustCompile(pattern)
 		file, err := os.Open(filename)
@@ -80,11 +87,13 @@ func scanFile(filename string, pattern string) <-chan string {
 		defer file.Close()
 
 		scanner := bufio.NewScanner(file)
+		n := 0
 		for scanner.Scan() {
+			n += 1
 			match := re.FindStringSubmatch(scanner.Text())
 			if len(match) != 0 {
 				// fmt.Printf("1. %s\n", match[1])
-				c <- filename + " : " + scanner.Text()
+				c <- lineMatch{filename: filename, n: n, match: scanner.Text()}
 			}
 		}
 
@@ -94,6 +103,10 @@ func scanFile(filename string, pattern string) <-chan string {
 		close(c)
 	}()
 	return c
+}
+
+func printLineMatch(lm lineMatch) {
+	fmt.Printf("%s%s%s :%s%d%s:%s %s\n", ansi.Magenta, lm.filename, ansi.Blue, ansi.Green, lm.n, ansi.Blue, ansi.Reset, lm.match)
 }
 
 func main() {
@@ -106,12 +119,12 @@ func main() {
 	c := getFileList(searchBase, true)
 
 	for filename := range c {
-		fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
+		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
 		if ignoreBinary == true && !isText(filename) {
 			continue
 		}
 		for d := range scanFile(filename, pattern) {
-			fmt.Printf("%s\n", d)
+			printLineMatch(d)
 		}
 	}
 }
