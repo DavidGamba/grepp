@@ -69,53 +69,49 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	return c
 }
 
-func scanFile(filename string, pattern string, c chan string) {
-	re := regexp.MustCompile(pattern)
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		match := re.FindStringSubmatch(scanner.Text())
-		if len(match) != 0 {
-			// fmt.Printf("1. %s\n", match[1])
-			c <- filename + " : " + scanner.Text()
+func scanFile(filename string, pattern string) <-chan string {
+	c := make(chan string)
+	go func() {
+		re := regexp.MustCompile(pattern)
+		file, err := os.Open(filename)
+		if err != nil {
+			log.Fatal(err)
 		}
-	}
+		defer file.Close()
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	close(c)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			match := re.FindStringSubmatch(scanner.Text())
+			if len(match) != 0 {
+				// fmt.Printf("1. %s\n", match[1])
+				c <- filename + " : " + scanner.Text()
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+		close(c)
+	}()
+	return c
 }
 
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
 	searchBase := os.Args[1]
-	// pattern := os.Args[2]
+	pattern := os.Args[2]
 	ignoreBinary := true
 
 	c := getFileList(searchBase, true)
 
-	// sliceFileRead := make([]chan string, 0)
-	// log.Printf("slice: %s", sliceFileRead)
 	for filename := range c {
 		fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
 		if ignoreBinary == true && !isText(filename) {
 			continue
 		}
-		// sliceFileRead = append(sliceFileRead, make(chan string))
-		// log.Printf("slice 2: %v, %v", sliceFileRead, len(sliceFileRead))
-		// go scanFile(filename, pattern, sliceFileRead[len(sliceFileRead)-1])
+		for d := range scanFile(filename, pattern) {
+			fmt.Printf("%s\n", d)
+		}
 	}
-	// log.Printf("slice 3: %v", sliceFileRead)
-	// for d := range sliceFileRead {
-	// 	for r := range sliceFileRead[d] {
-	// 		fmt.Printf("%s\n", r)
-	// 	}
-	// }
 }
