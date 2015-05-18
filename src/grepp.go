@@ -150,24 +150,43 @@ func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-
 	return c
 }
 
-func printLineMatch(lm lineMatch) {
-	fmt.Printf("%s%s%s :%s%d%s:%s ", ansi.Magenta, lm.filename, ansi.Blue, ansi.Green, lm.n, ansi.Blue, ansi.Reset)
-
-	// fmt.Printf("%s\n", lm.line)
-	// fmt.Printf("%q\n", lm.match)
-	for _, m := range lm.match {
-		fmt.Printf("%s%s%s%s", m[1], ansi.Red, m[2], ansi.Reset)
+func color(color string, line string, useColor bool) string {
+	if useColor {
+		return fmt.Sprintf("%s%s", color, line)
+	} else {
+		return fmt.Sprintf("%s", line)
 	}
-	fmt.Printf("%s\n", lm.end[1])
-	// fmt.Printf("%q\n", lm.end)
+}
 
-	// for i, n := range lm.match {
-	// 	for i, m := range lm.matchNames[i] {
-	// 		fmt.Printf("%d. match='%s', name='%s', m='%s'\n", i, n, m, lm.matchNames[i])
-	// 	}
-	// }
-	// fmt.Printf("The names are  : %v\n", lm.matchNames)
-	// fmt.Printf("The matches are: %v\n", lm.match)
+func colorReset(useColor bool) string {
+	if useColor {
+		return fmt.Sprintf("%s", ansi.Reset)
+	} else {
+		return ""
+	}
+}
+
+// Each section is in charge of starting with the color or reset.
+func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
+	stringLine := func() string {
+		if useColor {
+			result := ansi.Reset
+			for _, m := range lm.match {
+				result += fmt.Sprintf("%s%s%s%s", m[1], ansi.Red, m[2], ansi.Reset)
+			}
+			result += lm.end[1]
+			return result
+		} else {
+			return lm.line
+		}
+	}
+
+	result := color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, ":", useColor)
+	if useNumber {
+		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, ":", useColor)
+	}
+	result += colorReset(useColor) + " " + stringLine()
+	fmt.Println(result)
 }
 
 func main() {
