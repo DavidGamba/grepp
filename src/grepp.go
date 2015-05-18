@@ -83,16 +83,24 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		match := re.MatchString(scanner.Text())
+	reader := bufio.NewReaderSize(file, 4*1024)
+
+	for {
+		line, isPrefix, err := reader.ReadLine()
+		if isPrefix {
+			fmt.Println(errors.New(filename + ": buffer size to small"))
+			break
+		}
+		match := re.MatchString(string(line))
 		if match {
 			return true
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("ERROR: %v\n", err)
+			}
+			break
+		}
 	}
 	return false
 }
