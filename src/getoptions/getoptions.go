@@ -13,7 +13,21 @@ import (
 var isOptionRegex = regexp.MustCompile(`^(--?)([^=]+)(.*?)$`)
 var isOptionRegexEquals = regexp.MustCompile(`^=`)
 
-func isOption(s string, mode string) ([]string, string) {
+/*
+func isOption - Check if the given string is an option (starts with - or --).
+Return the option(s) without the starting dash and an argument if the string contained one.
+The behaviour changes depending on the mode: normal, bundling or SingleDash.
+TODO:
+Also, handle the single dash '-' especial option.
+*/
+func isOption(s string, mode string) (options []string, argument string) {
+	// Handle especial cases
+	if s == "--" {
+		return []string{"--"}, ""
+	} else if s == "-" {
+		return []string{"-"}, ""
+	}
+
 	match := isOptionRegex.FindStringSubmatch(s)
 	if len(match) > 0 {
 		// check long option
@@ -22,48 +36,75 @@ func isOption(s string, mode string) ([]string, string) {
 		} else {
 			switch mode {
 			case "bundling":
-				return strings.Split(match[2], ""), isOptionRegexEquals.ReplaceAllString(match[3], "")
+				options = strings.Split(match[2], "")
+				argument = isOptionRegexEquals.ReplaceAllString(match[3], "")
 			case "singleDash":
-				return []string{strings.Split(match[2], "")[0]}, strings.Join(strings.Split(match[2], "")[1:], "") + match[3]
+				options = []string{strings.Split(match[2], "")[0]}
+				argument = strings.Join(strings.Split(match[2], "")[1:], "") + match[3]
 			default:
-				return []string{match[2]}, isOptionRegexEquals.ReplaceAllString(match[3], "")
+				options = []string{match[2]}
+				argument = isOptionRegexEquals.ReplaceAllString(match[3], "")
 			}
+			return
 		}
 	}
 	return []string{}, ""
 }
 
-type OptDef struct {
-	spec  string
-	value interface{}
+// type OptDef - Definition "Spec" and default "Value".
+type OptDef map[string]struct {
+	Spec  string
+	Value interface{}
 }
 
+type Options map[string]interface{}
+
+/*
+func GetOptLong -
+*/
 func GetOptLong(args []string,
 	mode string,
-	definition map[string]OptDef) (map[string]interface{}, error) {
-	options := map[string]interface{}{}
-	for i, arg := range args {
-		fmt.Printf("input arg: %d, %s\n", i, arg)
+	definition OptDef) (Options, error) {
+	options := Options{}
+	fmt.Printf("GetOptLong args: %v\n", args)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		fmt.Printf("GetOptLong input arg: %d, %s\n", i, arg)
 		if match, argument := isOption(arg, mode); len(match) > 0 {
-			fmt.Printf("match: %v, argument: %v\n", match, argument)
+			fmt.Printf("GetOptLong match: %v, argument: %v\n", match, argument)
 			if _, ok := definition[match[0]]; ok {
-				fmt.Printf("found: '%v'\n", ok)
-				switch definition[match[0]].spec {
+				fmt.Printf("GetOptLong found\n")
+				switch definition[match[0]].Spec {
 				case "":
 					options[match[0]] = true
+				case "!":
+					options[match[0]] = false
+				case "=s":
+					if argument != "" {
+						options[match[0]] = argument
+					} else {
+						i++
+						options[match[0]] = args[i]
+					}
 				case "=i":
 					if argument != "" {
-						if i, err := strconv.Atoi(argument); err != nil {
+						if iArg, err := strconv.Atoi(argument); err != nil {
 							panic(fmt.Sprintf("Can't convert string to int: %q", err))
 						} else {
-							options[match[0]] = i
+							options[match[0]] = iArg
 						}
 					} else {
-						//TODO: Get next arg
+						i++
+						if iArg, err := strconv.Atoi(args[i]); err != nil {
+							panic(fmt.Sprintf("Can't convert string to int: %q", err))
+						} else {
+							options[match[0]] = iArg
+						}
 					}
 				}
 			}
 		}
 	}
+	fmt.Printf("GetOptLong options: %v\n", options)
 	return options, nil
 }

@@ -7,7 +7,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/davidgamba/grepp/getoptions"
+	getopt "github.com/davidgamba/grepp/getoptions"
 	"github.com/mgutz/ansi"
 	"io"
 	"log"
@@ -199,13 +199,13 @@ func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
-	definition := map[string]getoptions.OptDef{
-		"flag":   getoptions.OptDef{spec: "", value: nil},
-		"int":    getoptions.OptDef{spec: "=i", value: 0},
-		"string": getoptions.OptDef{spec: "=s", value: ""},
-	}
-
-	options, err := getoptions.GetOptLong(os.Args[1:], "normal", definition)
+	options, err := getopt.GetOptLong(
+		os.Args[1:], "normal",
+		getopt.OptDef{
+			"I":      {"", true}, // IgnoreBinary
+			"int":    {"=i", nil},
+			"string": {"=s", nil},
+		})
 	fmt.Printf("options: %v, err: %v\n", options, err)
 
 	// pattern := os.Args[1]
