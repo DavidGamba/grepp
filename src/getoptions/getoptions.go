@@ -65,14 +65,22 @@ func GetOptLong -
 */
 func GetOptLong(args []string,
 	mode string,
-	definition OptDef) (Options, error) {
+	definition OptDef) (Options, []string) {
+
 	options := Options{}
+
 	fmt.Printf("GetOptLong args: %v\n", args)
-	for i := 0; i < len(args); i++ {
+	fmt.Printf("GetOptLong definition: %v\n", definition)
+	for i := range args {
 		arg := args[i]
-		fmt.Printf("GetOptLong input arg: %d, %s\n", i, arg)
+		fmt.Printf("GetOptLong input arg: %s\n", arg)
 		if match, argument := isOption(arg, mode); len(match) > 0 {
 			fmt.Printf("GetOptLong match: %v, argument: %v\n", match, argument)
+			// Check for termination: '--'
+			if match[0] == "--" {
+				fmt.Printf("GetOptLong -- found\n")
+				return options, args[i+1:]
+			}
 			if _, ok := definition[match[0]]; ok {
 				fmt.Printf("GetOptLong found\n")
 				switch definition[match[0]].Spec {

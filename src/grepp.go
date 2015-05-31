@@ -199,14 +199,14 @@ func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
-	options, err := getopt.GetOptLong(
+	options, remaining := getopt.GetOptLong(
 		os.Args[1:], "normal",
 		getopt.OptDef{
 			"I":      {"", true}, // IgnoreBinary
 			"int":    {"=i", nil},
 			"string": {"=s", nil},
 		})
-	fmt.Printf("options: %v, err: %v\n", options, err)
+	fmt.Printf("options: %v, remaining: %v\n", options, remaining)
 
 	// pattern := os.Args[1]
 	// searchBase := os.Args[2]
