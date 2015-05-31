@@ -60,6 +60,46 @@ type OptDef map[string]struct {
 
 type Options map[string]interface{}
 
+func handleOption(definition OptDef,
+	alias string,
+	argument string,
+	args []string,
+	_options *Options,
+	_i *int) {
+
+	options := *_options
+	i := *_i
+
+	switch definition[alias].Spec {
+	case "":
+		options[alias] = true
+	case "!":
+		options[alias] = false
+	case "=s":
+		if argument != "" {
+			options[alias] = argument
+		} else {
+			i++
+			options[alias] = args[i]
+		}
+	case "=i":
+		if argument != "" {
+			if iArg, err := strconv.Atoi(argument); err != nil {
+				panic(fmt.Sprintf("Can't convert string to int: %q", err))
+			} else {
+				options[alias] = iArg
+			}
+		} else {
+			i++
+			if iArg, err := strconv.Atoi(args[i]); err != nil {
+				panic(fmt.Sprintf("Can't convert string to int: %q", err))
+			} else {
+				options[alias] = iArg
+			}
+		}
+	}
+}
+
 /*
 func GetOptLong -
 */
@@ -85,34 +125,7 @@ func GetOptLong(args []string,
 			}
 			if _, ok := definition[match[0]]; ok {
 				fmt.Printf("GetOptLong found\n")
-				switch definition[match[0]].Spec {
-				case "":
-					options[match[0]] = true
-				case "!":
-					options[match[0]] = false
-				case "=s":
-					if argument != "" {
-						options[match[0]] = argument
-					} else {
-						i++
-						options[match[0]] = args[i]
-					}
-				case "=i":
-					if argument != "" {
-						if iArg, err := strconv.Atoi(argument); err != nil {
-							panic(fmt.Sprintf("Can't convert string to int: %q", err))
-						} else {
-							options[match[0]] = iArg
-						}
-					} else {
-						i++
-						if iArg, err := strconv.Atoi(args[i]); err != nil {
-							panic(fmt.Sprintf("Can't convert string to int: %q", err))
-						} else {
-							options[match[0]] = iArg
-						}
-					}
-				}
+				handleOption(definition, match[0], argument, args, &options, &i)
 			} else {
 				// TODO: Handle invalid options
 				remaining = append(remaining, arg)
