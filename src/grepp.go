@@ -6,8 +6,8 @@ package main
 import (
 	"bufio"
 	"errors"
+	"flag"
 	"fmt"
-	getopt "github.com/davidgamba/grepp/getoptions"
 	"github.com/mgutz/ansi"
 	"io"
 	"log"
@@ -199,40 +199,58 @@ func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
-	options, remaining := getopt.GetOptLong(
-		os.Args[1:], "normal",
-		getopt.OptDef{
-			"I":      {"", true}, // IgnoreBinary
-			"int":    {"=i", nil},
-			"string": {"=s", nil},
-		})
-	fmt.Printf("options: %v, remaining: %v\n", options, remaining)
-
-	// pattern := os.Args[1]
-	// searchBase := os.Args[2]
+	var ignoreBinary bool
+	var ignoreCase bool
+	var useColor bool
+	var filenameOnly bool
+	var useNumber bool
 	// ignoreBinary := true
 	// ignoreCase := true
 	// useColor := true
 	// filenameOnly := false
 	// useNumber := true
-	//
-	// c := getFileList(searchBase, true)
-	//
-	// for filename := range c {
-	// 	// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
-	// 	if ignoreBinary == true && !isText(filename) {
-	// 		continue
-	// 	}
-	// 	if filenameOnly {
-	// 		if checkPatternInFile(filename, pattern, ignoreCase) {
-	// 			fmt.Printf("%s%s\n", color(ansi.Magenta, filename, useColor), colorReset(useColor))
-	// 		}
-	// 	} else {
-	// 		if checkPatternInFile(filename, pattern, ignoreCase) {
-	// 			for d := range searchAndReplaceInFile(filename, pattern, ignoreCase) {
-	// 				printLineMatch(d, useColor, useNumber)
-	// 			}
-	// 		}
-	// 	}
-	// }
+
+	flag.BoolVar(&ignoreBinary, "I", true, "ignore-binary")
+	flag.BoolVar(&ignoreCase, "i", true, "ignore-case")
+	flag.BoolVar(&useColor, "color", true, "color")
+	flag.BoolVar(&useNumber, "n", true, "use-number")
+	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
+	flag.Parse()
+	log.Printf("flag args: %s, n %v", flag.Args(), flag.NArg())
+
+	if flag.NArg() < 1 {
+		log.Printf("Missing pattern")
+		os.Exit(1)
+	}
+	var searchBase string
+	if flag.NArg() < 2 {
+		searchBase = "."
+	} else {
+		searchBase = flag.Args()[1]
+	}
+
+	pattern := flag.Args()[0]
+
+	log.Printf("pattern: %s, searchBase: %s", pattern, searchBase)
+	log.Printf("ignoreBinary: %v, ignoreCase: %v, useColor %v, useNumber %v, filenameOnly %v", ignoreBinary, ignoreCase, useColor, useNumber, filenameOnly)
+
+	c := getFileList(searchBase, true)
+
+	for filename := range c {
+		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
+		if ignoreBinary == true && !isText(filename) {
+			continue
+		}
+		if filenameOnly {
+			if checkPatternInFile(filename, pattern, ignoreCase) {
+				fmt.Printf("%s%s\n", color(ansi.Magenta, filename, useColor), colorReset(useColor))
+			}
+		} else {
+			if checkPatternInFile(filename, pattern, ignoreCase) {
+				for d := range searchAndReplaceInFile(filename, pattern, ignoreCase) {
+					printLineMatch(d, useColor, useNumber)
+				}
+			}
+		}
+	}
 }
