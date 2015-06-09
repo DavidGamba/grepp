@@ -138,19 +138,28 @@ func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-
 		}
 		defer file.Close()
 
-		scanner := bufio.NewScanner(file)
+		reader := bufio.NewReaderSize(file, 4*1024)
+		// line number
 		n := 0
-		for scanner.Scan() {
+		for {
 			n += 1
-			match := re.FindAllStringSubmatch(scanner.Text(), -1)
-			remainder := reEnd.FindStringSubmatch(scanner.Text())
-			if len(match) != 0 {
-				c <- lineMatch{filename: filename, n: n, line: scanner.Text(), match: match, end: remainder}
+			line, isPrefix, err := reader.ReadLine()
+			if isPrefix {
+				fmt.Println(errors.New(filename + ": buffer size to small"))
+				break
 			}
-		}
-
-		if err := scanner.Err(); err != nil {
-			log.Fatal("%s: ", filename, err)
+			match := re.FindAllStringSubmatch(string(line), -1)
+			remainder := reEnd.FindStringSubmatch(string(line))
+			if len(match) != 0 {
+				c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
+			}
+			// stop reading file
+			if err != nil {
+				if err != io.EOF {
+					fmt.Printf("ERROR: %v\n", err)
+				}
+				break
+			}
 		}
 		close(c)
 	}()
