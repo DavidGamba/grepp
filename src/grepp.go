@@ -182,18 +182,33 @@ func colorReset(useColor bool) string {
 	}
 }
 
+// http://rosettacode.org/wiki/Strip_control_codes_and_extended_characters_from_a_string#Go
+// two UTF-8 functions identical except for operator comparing c to 127
+func stripCtlFromUTF8(str string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 32 && r != 127 {
+			return r
+		}
+		return -1
+	}, str)
+}
+
 // Each section is in charge of starting with the color or reset.
 func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
 	stringLine := func() string {
 		if useColor {
 			result := ansi.Reset
 			for _, m := range lm.match {
-				result += fmt.Sprintf("%s%s%s%s", m[1], ansi.Red, m[2], ansi.Reset)
+				result += fmt.Sprintf("%s%s%s%s",
+					stripCtlFromUTF8(m[1]),
+					ansi.Red,
+					stripCtlFromUTF8(m[2]),
+					ansi.Reset)
 			}
-			result += lm.end[1]
+			result += stripCtlFromUTF8(lm.end[1])
 			return result
 		} else {
-			return lm.line
+			return stripCtlFromUTF8(lm.line)
 		}
 	}
 
