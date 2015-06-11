@@ -126,7 +126,7 @@ func getRegex(pattern string, ignoreCase bool) (re, reEnd *regexp.Regexp) {
 	return
 }
 
-func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-chan lineMatch {
+func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan lineMatch {
 	c := make(chan lineMatch)
 	re, reEnd := getRegex(pattern, ignoreCase)
 	go func() {
@@ -148,9 +148,7 @@ func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-
 			}
 			match := re.FindAllStringSubmatch(string(line), -1)
 			remainder := reEnd.FindStringSubmatch(string(line))
-			if len(match) != 0 {
-				c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
-			}
+			c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
 			// stop reading file
 			if err != nil {
 				if err != io.EOF {
@@ -194,15 +192,17 @@ func stripCtlFromUTF8(str string) string {
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
+func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string) {
 	stringLine := func() string {
 		if useColor {
 			result := ansi.Reset
 			for _, m := range lm.match {
-				result += fmt.Sprintf("%s%s%s%s",
+				result += fmt.Sprintf("%s%s%s%s%s%s",
 					stripCtlFromUTF8(m[1]),
 					ansi.Red,
 					stripCtlFromUTF8(m[2]),
+					ansi.Green,
+					stripCtlFromUTF8(replace),
 					ansi.Reset)
 			}
 			result += stripCtlFromUTF8(lm.end[1])
@@ -220,6 +220,16 @@ func printLineMatch(lm lineMatch, useColor bool, useNumber bool) {
 	fmt.Println(result)
 }
 
+// Each section is in charge of starting with the color or reset.
+func printLineContext(lm lineMatch, useColor, useNumber bool) {
+	result := color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, "-", useColor)
+	if useNumber {
+		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, "-", useColor)
+	}
+	result += colorReset(useColor) + " " + lm.line
+	fmt.Println(result)
+}
+
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
@@ -228,6 +238,8 @@ func main() {
 	var useColor bool
 	var filenameOnly bool
 	var useNumber bool
+	var replace string
+	var force bool
 	// ignoreBinary := true
 	// ignoreCase := true
 	// useColor := true
@@ -239,6 +251,8 @@ func main() {
 	flag.BoolVar(&useColor, "color", true, "color")
 	flag.BoolVar(&useNumber, "n", true, "use-number")
 	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
+	flag.StringVar(&replace, "r", "", "replace")
+	flag.BoolVar(&force, "f", false, "force")
 	flag.Parse()
 	log.Printf("flag args: %s, n %v", flag.Args(), flag.NArg())
 
@@ -255,8 +269,9 @@ func main() {
 
 	pattern := flag.Args()[0]
 
-	log.Printf("pattern: %s, searchBase: %s", pattern, searchBase)
-	log.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v", ignoreBinary, caseSensitive, useColor, useNumber, filenameOnly)
+	log.Printf("pattern: %s, searchBase: %s, replace: %s", pattern, searchBase, replace)
+	log.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
+		ignoreBinary, caseSensitive, useColor, useNumber, filenameOnly, force)
 
 	c := getFileList(searchBase, true)
 
@@ -272,7 +287,18 @@ func main() {
 		} else {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
-					printLineMatch(d, useColor, useNumber)
+					if len(d.match) != 0 {
+						printLineMatch(d, useColor, useNumber, replace)
+					}
+					if force {
+						// TODO: This is how I would get non-matching lines to print to the file.
+						// A new function needs to be created to print matched sections to file with the replacement and without color.
+						if len(d.match) == 0 {
+							printLineContext(d, useColor, useNumber)
+						} else {
+							printLineMatch(d, useColor, useNumber, replace)
+						}
+					}
 				}
 			}
 		}
