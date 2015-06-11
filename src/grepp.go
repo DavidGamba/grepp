@@ -78,12 +78,7 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 }
 
 func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
-	var re *regexp.Regexp
-	if ignoreCase {
-		re = regexp.MustCompile(`(?i)` + pattern)
-	} else {
-		re = regexp.MustCompile(pattern)
-	}
+	re, _ := getRegex(pattern, ignoreCase)
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -120,10 +115,7 @@ type lineMatch struct {
 	line     string
 }
 
-func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-chan lineMatch {
-	c := make(chan lineMatch)
-	var re *regexp.Regexp
-	var reEnd *regexp.Regexp
+func getRegex(pattern string, ignoreCase bool) (re, reEnd *regexp.Regexp) {
 	if ignoreCase {
 		re = regexp.MustCompile(`(?i)(.*?)(?P<pattern>` + pattern + `)`)
 		reEnd = regexp.MustCompile(`(?i).*` + pattern + `(.*?)$`)
@@ -131,6 +123,12 @@ func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-
 		re = regexp.MustCompile(`(.*?)(?P<pattern>` + pattern + `)`)
 		reEnd = regexp.MustCompile(`.*` + pattern + `(.*?)$`)
 	}
+	return
+}
+
+func searchAndReplaceInFile(filename string, pattern string, ignoreCase bool) <-chan lineMatch {
+	c := make(chan lineMatch)
+	re, reEnd := getRegex(pattern, ignoreCase)
 	go func() {
 		file, err := os.Open(filename)
 		if err != nil {
