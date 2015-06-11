@@ -182,6 +182,8 @@ func colorReset(useColor bool) string {
 	}
 }
 
+//TODO: Don't drop the control char but scape it and show it like less.
+
 // http://rosettacode.org/wiki/Strip_control_codes_and_extended_characters_from_a_string#Go
 // two UTF-8 functions identical except for operator comparing c to 127
 func stripCtlFromUTF8(str string) string {
@@ -224,7 +226,7 @@ func main() {
 	log.Printf("args: %s", os.Args[1:])
 
 	var ignoreBinary bool
-	var ignoreCase bool
+	var caseSensitive bool
 	var useColor bool
 	var filenameOnly bool
 	var useNumber bool
@@ -235,7 +237,7 @@ func main() {
 	// useNumber := true
 
 	flag.BoolVar(&ignoreBinary, "I", true, "ignore-binary")
-	flag.BoolVar(&ignoreCase, "i", true, "ignore-case")
+	flag.BoolVar(&caseSensitive, "c", false, "case-sensitive")
 	flag.BoolVar(&useColor, "color", true, "color")
 	flag.BoolVar(&useNumber, "n", true, "use-number")
 	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
@@ -256,7 +258,7 @@ func main() {
 	pattern := flag.Args()[0]
 
 	log.Printf("pattern: %s, searchBase: %s", pattern, searchBase)
-	log.Printf("ignoreBinary: %v, ignoreCase: %v, useColor %v, useNumber %v, filenameOnly %v", ignoreBinary, ignoreCase, useColor, useNumber, filenameOnly)
+	log.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v", ignoreBinary, caseSensitive, useColor, useNumber, filenameOnly)
 
 	c := getFileList(searchBase, true)
 
@@ -266,12 +268,12 @@ func main() {
 			continue
 		}
 		if filenameOnly {
-			if checkPatternInFile(filename, pattern, ignoreCase) {
+			if checkPatternInFile(filename, pattern, !caseSensitive) {
 				fmt.Printf("%s%s\n", color(ansi.Magenta, filename, useColor), colorReset(useColor))
 			}
 		} else {
-			if checkPatternInFile(filename, pattern, ignoreCase) {
-				for d := range searchAndReplaceInFile(filename, pattern, ignoreCase) {
+			if checkPatternInFile(filename, pattern, !caseSensitive) {
+				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					printLineMatch(d, useColor, useNumber)
 				}
 			}
