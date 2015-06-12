@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/mgutz/ansi"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -288,6 +289,15 @@ func main() {
 			}
 		} else {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
+				if force {
+					tmpFile, err := ioutil.TempFile("", filepath.Base(filename)+"-")
+					// defer os.Remove(tmpFile.Name())
+					if err != nil {
+						println("cannot open ", tmpFile)
+						log.Fatal(err)
+					}
+					log.Printf("tmpFile: %v", tmpFile.Name())
+				}
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {
 						if context > 0 {
