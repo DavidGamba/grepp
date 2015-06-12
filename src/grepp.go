@@ -240,6 +240,7 @@ func main() {
 	var useNumber bool
 	var replace string
 	var force bool
+	var context int
 	// ignoreBinary := true
 	// ignoreCase := true
 	// useColor := true
@@ -253,6 +254,7 @@ func main() {
 	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
 	flag.StringVar(&replace, "r", "", "replace")
 	flag.BoolVar(&force, "f", false, "force")
+	flag.IntVar(&context, "C", 0, "context")
 	flag.Parse()
 	log.Printf("flag args: %s, n %v", flag.Args(), flag.NArg())
 
@@ -287,7 +289,11 @@ func main() {
 		} else {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
-					if len(d.match) != 0 {
+					if len(d.match) == 0 {
+						if context > 0 {
+							printLineContext(d, useColor, useNumber)
+						}
+					} else {
 						printLineMatch(d, useColor, useNumber, replace)
 					}
 					if force {
