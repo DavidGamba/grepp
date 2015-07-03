@@ -193,7 +193,7 @@ func stripCtlFromUTF8(str string) string {
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string) {
+func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string, showFile bool) {
 	stringLine := func() string {
 		if useColor {
 			result := ansi.Reset
@@ -213,7 +213,10 @@ func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string) {
 		}
 	}
 
-	result := color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, ":", useColor)
+	result := ""
+	if showFile {
+		result += color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, ":", useColor)
+	}
 	if useNumber {
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, ":", useColor)
 	}
@@ -222,8 +225,11 @@ func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string) {
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineContext(lm lineMatch, useColor, useNumber bool) {
-	result := color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, "-", useColor)
+func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
+	result := ""
+	if showFile {
+		result += color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, "-", useColor)
+	}
 	if useNumber {
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, "-", useColor)
 	}
@@ -239,6 +245,7 @@ func main() {
 	var useColor bool
 	var filenameOnly bool
 	var useNumber bool
+	var showFile bool
 	var replace string
 	var force bool
 	var context int
@@ -251,7 +258,7 @@ func main() {
 	flag.BoolVar(&ignoreBinary, "I", true, "ignore-binary")
 	flag.BoolVar(&caseSensitive, "c", false, "case-sensitive")
 	flag.BoolVar(&useColor, "color", true, "color")
-	flag.BoolVar(&useNumber, "n", true, "use-number")
+	flag.BoolVar(&useNumber, "n", false, "use-number")
 	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
 	flag.StringVar(&replace, "r", "", "replace")
 	flag.BoolVar(&force, "f", false, "force")
@@ -268,6 +275,16 @@ func main() {
 		searchBase = "."
 	} else {
 		searchBase = flag.Args()[1]
+	}
+	searchBaseInfo, err := os.Stat(searchBase)
+	if err != nil {
+		println("cannot stat", searchBase)
+		log.Fatal(err)
+	}
+	if searchBaseInfo.IsDir() {
+		showFile = true
+	} else {
+		showFile = false
 	}
 
 	pattern := flag.Args()[0]
@@ -301,18 +318,18 @@ func main() {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {
 						if context > 0 {
-							printLineContext(d, useColor, useNumber)
+							printLineContext(d, useColor, !useNumber, showFile)
 						}
 					} else {
-						printLineMatch(d, useColor, useNumber, replace)
+						printLineMatch(d, useColor, !useNumber, replace, showFile)
 					}
 					if force {
 						// TODO: This is how I would get non-matching lines to print to the file.
 						// A new function needs to be created to print matched sections to file with the replacement and without color.
 						if len(d.match) == 0 {
-							printLineContext(d, useColor, useNumber)
+							printLineContext(d, useColor, !useNumber, showFile)
 						} else {
-							printLineMatch(d, useColor, useNumber, replace)
+							printLineMatch(d, useColor, !useNumber, replace, showFile)
 						}
 					}
 				}
