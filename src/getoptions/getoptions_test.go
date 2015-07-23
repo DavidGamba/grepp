@@ -103,6 +103,7 @@ func TestGetOptLong(t *testing.T) {
 		mode       string
 		definition OptDef
 		options    Options
+		remaining  []string
 	}{
 		{[]string{"--string", "hello", "--int", "123", "--flag"},
 			"bundling",
@@ -112,13 +113,28 @@ func TestGetOptLong(t *testing.T) {
 				"string": {"=s", nil},
 			},
 			Options{"int": 123, "string": "hello", "flag": true},
+			nil,
+		},
+		{[]string{"t1", "--string", "hello", "t2", "--int", "123", "t3", "--flag", "t4"},
+			"bundling",
+			OptDef{
+				"flag":   {"", nil},
+				"int":    {"=i", nil},
+				"string": {"=s", nil},
+			},
+			Options{"int": 123, "string": "hello", "flag": true},
+			[]string{"t1", "t2", "t3", "t4"},
 		},
 	}
 	for _, c := range cases {
-		options, err := GetOptLong(c.in, c.mode, c.definition)
+		options, remaining := GetOptLong(c.in, c.mode, c.definition)
 		if !reflect.DeepEqual(options, c.options) {
 			t.Errorf("getOptLong(%q, %q, %v) == (%v, %v), want (%v, %v)",
-				c.in, c.mode, c.definition, options, err, c.options, nil)
+				c.in, c.mode, c.definition, options, remaining, c.options, c.remaining)
+		}
+		if !reflect.DeepEqual(remaining, c.remaining) {
+			t.Errorf("getOptLong(%q, %q, %v) == (%v, %v), want (%v, %v)",
+				c.in, c.mode, c.definition, options, remaining, c.options, c.remaining)
 		}
 	}
 }

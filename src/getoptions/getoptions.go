@@ -65,10 +65,9 @@ func handleOption(definition OptDef,
 	argument string,
 	args []string,
 	_options *Options,
-	_i *int) {
+	i *int) {
 
 	options := *_options
-	i := *_i
 
 	switch definition[alias].Spec {
 	case "":
@@ -79,8 +78,8 @@ func handleOption(definition OptDef,
 		if argument != "" {
 			options[alias] = argument
 		} else {
-			i++
-			options[alias] = args[i]
+			*i++
+			options[alias] = args[*i]
 		}
 	case "=i":
 		if argument != "" {
@@ -90,8 +89,8 @@ func handleOption(definition OptDef,
 				options[alias] = iArg
 			}
 		} else {
-			i++
-			if iArg, err := strconv.Atoi(args[i]); err != nil {
+			*i++
+			if iArg, err := strconv.Atoi(args[*i]); err != nil {
 				panic(fmt.Sprintf("Can't convert string to int: %q", err))
 			} else {
 				options[alias] = iArg
