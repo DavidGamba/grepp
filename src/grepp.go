@@ -6,8 +6,8 @@ package main
 import (
 	"bufio"
 	"errors"
-	"flag"
 	"fmt"
+	gopt "github.com/davidgamba/grepp/getoptions"
 	"github.com/mgutz/ansi"
 	"io"
 	"io/ioutil"
@@ -240,41 +240,64 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
-	var ignoreBinary bool
-	var caseSensitive bool
-	var useColor bool
-	var filenameOnly bool
-	var useNumber bool
 	var showFile bool
 	var replace string
-	var force bool
-	var context int
-	// ignoreBinary := true
-	// ignoreCase := true
-	// useColor := true
-	// filenameOnly := false
-	// useNumber := true
 
-	flag.BoolVar(&ignoreBinary, "I", true, "ignore-binary")
-	flag.BoolVar(&caseSensitive, "c", false, "case-sensitive")
-	flag.BoolVar(&useColor, "color", true, "color")
-	flag.BoolVar(&useNumber, "n", false, "use-number")
-	flag.BoolVar(&filenameOnly, "l", false, "filename-only")
-	flag.StringVar(&replace, "r", "", "replace")
-	flag.BoolVar(&force, "f", false, "force")
-	flag.IntVar(&context, "C", 0, "context")
-	flag.Parse()
-	log.Printf("flag args: %s, n %v", flag.Args(), flag.NArg())
+	ignoreBinary := true
+	caseSensitive := false
+	useColor := true
+	useNumber := true
+	filenameOnly := false
+	force := false
+	context := 0
 
-	if flag.NArg() < 1 {
+	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
+		gopt.OptDef{
+			"I":     {"", nil},   // ignoreBinary
+			"c":     {"", nil},   // caseSensitive
+			"color": {"", nil},   // useColor
+			"n":     {"", nil},   // useNumber
+			"l":     {"", nil},   // filenameOnly
+			"r":     {"=s", nil}, // replace
+			"f":     {"", nil},   // force
+			"C":     {"=i", nil}, // context
+		},
+	)
+
+	if val, ok := options["I"]; ok {
+		ignoreBinary = !val.(bool)
+	}
+	if val, ok := options["c"]; ok {
+		caseSensitive = val.(bool)
+	}
+	if val, ok := options["color"]; ok {
+		useColor = !val.(bool)
+	}
+	if val, ok := options["n"]; ok {
+		useNumber = !val.(bool)
+	}
+	if val, ok := options["l"]; ok {
+		filenameOnly = val.(bool)
+	}
+	if val, ok := options["r"]; ok {
+		replace = val.(string)
+	}
+	if val, ok := options["f"]; ok {
+		force = val.(bool)
+	}
+	if val, ok := options["C"]; ok {
+		context = val.(int)
+	}
+
+	if len(remaining) < 1 {
 		log.Printf("Missing pattern")
 		os.Exit(1)
 	}
 	var searchBase string
-	if flag.NArg() < 2 {
+	if len(remaining) < 2 {
 		searchBase = "."
 	} else {
-		searchBase = flag.Args()[1]
+		searchBase = remaining[1]
 	}
 	searchBaseInfo, err := os.Stat(searchBase)
 	if err != nil {
@@ -287,7 +310,7 @@ func main() {
 		showFile = false
 	}
 
-	pattern := flag.Args()[0]
+	pattern := remaining[0]
 
 	log.Printf("pattern: %s, searchBase: %s, replace: %s", pattern, searchBase, replace)
 	log.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
@@ -318,18 +341,18 @@ func main() {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {
 						if context > 0 {
-							printLineContext(d, useColor, !useNumber, showFile)
+							printLineContext(d, useColor, useNumber, showFile)
 						}
 					} else {
-						printLineMatch(d, useColor, !useNumber, replace, showFile)
+						printLineMatch(d, useColor, useNumber, replace, showFile)
 					}
 					if force {
 						// TODO: This is how I would get non-matching lines to print to the file.
 						// A new function needs to be created to print matched sections to file with the replacement and without color.
 						if len(d.match) == 0 {
-							printLineContext(d, useColor, !useNumber, showFile)
+							printLineContext(d, useColor, useNumber, showFile)
 						} else {
-							printLineMatch(d, useColor, !useNumber, replace, showFile)
+							printLineMatch(d, useColor, useNumber, replace, showFile)
 						}
 					}
 				}
