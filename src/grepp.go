@@ -254,12 +254,12 @@ func main() {
 			"color":   {"", true},  // useColor
 			"n":       {"", true},  // useNumber
 			"l":       {"", false}, // filenameOnly
-			"r":       {"=s", nil}, // replace
+			"r":       {"=s", ""},  // replace
 			"f":       {"", false}, // force
 			"C":       {"=i", 0},   // context
 			"fp":      {"", false}, // fullPath - Used to show the file full path instead of the relative to the current dir.
-			"name":    {"=s", nil}, // filePattern - Use to further filter the search to files matching that pattern.
-			"ignore":  {"=s", nil}, // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
+			"name":    {"=s", ""},  // filePattern - Use to further filter the search to files matching that pattern.
+			"ignore":  {"=s", ""},  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
 			"spacing": {"", false}, // keepSpacing - Do not remove initial spacing.
 		},
 	)
@@ -269,14 +269,9 @@ func main() {
 	useColor := options["color"].(bool)
 	useNumber := options["n"].(bool)
 	filenameOnly := options["l"].(bool)
+	replace = options["r"].(string)
 	force := options["f"].(bool)
 	context := options["C"].(int)
-
-	// Since no default is provided, it is necesary to check for the existence of
-	// r in the map
-	if val, ok := options["r"]; ok {
-		replace = val.(string)
-	}
 
 	if len(remaining) < 1 {
 		log.Printf("Missing pattern")

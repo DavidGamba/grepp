@@ -107,9 +107,7 @@ func handleOption(definition OptDef,
 func setOptionDefaults(definition OptDef, _options *Options) {
 	options := *_options
 	for k, v := range definition {
-		if v.Value != nil {
-			options[k] = v.Value
-		}
+		options[k] = v.Value
 	}
 }
 
