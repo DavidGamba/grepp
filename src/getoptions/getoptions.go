@@ -103,6 +103,16 @@ func handleOption(definition OptDef,
 	}
 }
 
+// func setOptionDefaults - Read definition and set the default option values
+func setOptionDefaults(definition OptDef, _options *Options) {
+	options := *_options
+	for k, v := range definition {
+		if v.Value != nil {
+			options[k] = v.Value
+		}
+	}
+}
+
 /*
 func GetOptLong -
 */
@@ -115,6 +125,9 @@ func GetOptLong(args []string,
 
 	fmt.Printf("GetOptLong args: %v\n", args)
 	fmt.Printf("GetOptLong definition: %v\n", definition)
+
+	setOptionDefaults(definition, &options)
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		fmt.Printf("GetOptLong input arg: %s\n", arg)
