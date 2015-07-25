@@ -71,7 +71,11 @@ func handleOption(definition OptDef,
 
 	switch definition[alias].Spec {
 	case "":
-		options[alias] = true
+		if val, ok := options[alias]; ok {
+			options[alias] = !val.(bool)
+		} else {
+			options[alias] = true
+		}
 	case "!":
 		options[alias] = false
 	case "=s":
