@@ -240,53 +240,42 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 func main() {
 	log.Printf("args: %s", os.Args[1:])
 
+	// Controls whether or not to show the filename. If the given location is a
+	// file then there is no need to show the filename
 	var showFile bool
 	var replace string
-
-	ignoreBinary := true
-	caseSensitive := false
-	useColor := true
-	useNumber := true
-	filenameOnly := false
-	force := false
-	context := 0
+	// var filePattern string
+	// var ignoreFilePattern string
 
 	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
 		gopt.OptDef{
-			"I":     {"", nil},   // ignoreBinary
-			"c":     {"", nil},   // caseSensitive
-			"color": {"", nil},   // useColor
-			"n":     {"", nil},   // useNumber
-			"l":     {"", nil},   // filenameOnly
-			"r":     {"=s", nil}, // replace
-			"f":     {"", nil},   // force
-			"C":     {"=i", nil}, // context
+			"I":       {"", true},  // ignoreBinary
+			"c":       {"", false}, // caseSensitive
+			"color":   {"", true},  // useColor
+			"n":       {"", true},  // useNumber
+			"l":       {"", false}, // filenameOnly
+			"r":       {"=s", nil}, // replace
+			"f":       {"", false}, // force
+			"C":       {"=i", 0},   // context
+			"fp":      {"", false}, // fullPath - Used to show the file full path instead of the relative to the current dir.
+			"name":    {"=s", nil}, // filePattern - Use to further filter the search to files matching that pattern.
+			"ignore":  {"=s", nil}, // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
+			"spacing": {"", false}, // keepSpacing - Do not remove initial spacing.
 		},
 	)
 
-	if val, ok := options["I"]; ok {
-		ignoreBinary = !val.(bool)
-	}
-	if val, ok := options["c"]; ok {
-		caseSensitive = val.(bool)
-	}
-	if val, ok := options["color"]; ok {
-		useColor = !val.(bool)
-	}
-	if val, ok := options["n"]; ok {
-		useNumber = !val.(bool)
-	}
-	if val, ok := options["l"]; ok {
-		filenameOnly = val.(bool)
-	}
+	ignoreBinary := options["I"].(bool)
+	caseSensitive := options["c"].(bool)
+	useColor := options["color"].(bool)
+	useNumber := options["n"].(bool)
+	filenameOnly := options["l"].(bool)
+	force := options["f"].(bool)
+	context := options["C"].(int)
+
+	// Since no default is provided, it is necesary to check for the existence of
+	// r in the map
 	if val, ok := options["r"]; ok {
 		replace = val.(string)
-	}
-	if val, ok := options["f"]; ok {
-		force = val.(bool)
-	}
-	if val, ok := options["C"]; ok {
-		context = val.(int)
 	}
 
 	if len(remaining) < 1 {
