@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 	gopt "github.com/davidgamba/grepp/getoptions"
+	l "github.com/davidgamba/grepp/logging"
 	"github.com/mgutz/ansi"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,7 +24,7 @@ func getMimeType(filename string) string {
 	file, err := os.Open(filename)
 	if err != nil {
 		println("cannot open", filename)
-		log.Fatal(err)
+		l.Error.Fatal(err)
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
@@ -39,32 +39,32 @@ func isText(filename string) bool {
 }
 
 func getFileList(filename string, ignoreDirs bool) <-chan string {
-	// log.Printf("getFileList: %s", filename)
+	l.Trace.Printf("getFileList: %s", filename)
 	c := make(chan string)
 	go func() {
 		fInfo, err := os.Stat(filename)
 		if err != nil {
 			println("cannot stat", filename)
-			log.Fatal(err)
+			l.Error.Fatal(err)
 		}
 		if fInfo.IsDir() {
 			if ignoreDirs == false {
 				c <- filename
 			}
 			fileSearch := filename + string(filepath.Separator) + "*"
-			// log.Printf("file search: %s", fileSearch)
+			l.Trace.Printf("file search: %s", fileSearch)
 			fileMatches, err := filepath.Glob(fileSearch)
 			if err != nil {
 				println("error: ", err)
-				log.Fatal(err)
+				l.Error.Fatal(err)
 			}
-			// log.Printf("fileMatches: %s", fileMatches)
+			l.Trace.Printf("fileMatches: %s", fileMatches)
 			for _, file := range fileMatches {
 				if filepath.Base(filename) == filepath.Base(file) {
-					log.Printf("skipping: %s", filename)
+					l.Debug.Printf("skipping: %s", filename)
 					continue
 				}
-				// log.Printf("go: %s", file)
+				l.Trace.Printf("go: %s", file)
 				d := getFileList(file, ignoreDirs)
 				for dirFile := range d {
 					c <- dirFile
@@ -82,7 +82,7 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 	re, _ := getRegex(pattern, ignoreCase)
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatal(err)
+		l.Error.Fatal(err)
 	}
 	defer file.Close()
 
@@ -133,7 +133,7 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 	go func() {
 		file, err := os.Open(filename)
 		if err != nil {
-			log.Fatal(err)
+			l.Error.Fatal(err)
 		}
 		defer file.Close()
 
@@ -238,7 +238,8 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 }
 
 func main() {
-	log.Printf("args: %s", os.Args[1:])
+	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stderr, os.Stderr, os.Stderr)
+	l.Debug.Printf("args: %s", os.Args[1:])
 
 	// Controls whether or not to show the filename. If the given location is a
 	// file then there is no need to show the filename
@@ -261,6 +262,8 @@ func main() {
 			"name":    {"=s", ""},  // filePattern - Use to further filter the search to files matching that pattern.
 			"ignore":  {"=s", ""},  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
 			"spacing": {"", false}, // keepSpacing - Do not remove initial spacing.
+			"debug":   {"", false}, // debug logging
+			"trace":   {"", false}, // trace logging
 		},
 	)
 
@@ -273,9 +276,17 @@ func main() {
 	force := options["f"].(bool)
 	context := options["C"].(int)
 
+	debug := options["debug"].(bool)
+	trace := options["trace"].(bool)
+	if debug {
+		l.LogInit(ioutil.Discard, os.Stderr, os.Stderr, os.Stderr, os.Stderr)
+	}
+	if trace {
+		l.LogInit(os.Stderr, os.Stderr, os.Stderr, os.Stderr, os.Stderr)
+	}
+
 	if len(remaining) < 1 {
-		log.Printf("Missing pattern")
-		os.Exit(1)
+		l.Error.Fatal("Missing pattern!")
 	}
 	var searchBase string
 	if len(remaining) < 2 {
@@ -286,7 +297,7 @@ func main() {
 	searchBaseInfo, err := os.Stat(searchBase)
 	if err != nil {
 		println("cannot stat", searchBase)
-		log.Fatal(err)
+		l.Error.Fatal(err)
 	}
 	if searchBaseInfo.IsDir() {
 		showFile = true
@@ -296,8 +307,8 @@ func main() {
 
 	pattern := remaining[0]
 
-	log.Printf("pattern: %s, searchBase: %s, replace: %s", pattern, searchBase, replace)
-	log.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
+	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", pattern, searchBase, replace)
+	l.Debug.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
 		ignoreBinary, caseSensitive, useColor, useNumber, filenameOnly, force)
 
 	c := getFileList(searchBase, true)
@@ -318,9 +329,9 @@ func main() {
 					// defer os.Remove(tmpFile.Name())
 					if err != nil {
 						println("cannot open ", tmpFile)
-						log.Fatal(err)
+						l.Error.Fatal(err)
 					}
-					log.Printf("tmpFile: %v", tmpFile.Name())
+					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
 				}
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {

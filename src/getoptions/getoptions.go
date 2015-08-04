@@ -4,7 +4,7 @@ package getoptions - Go option parser based on Perl’s Getopt::Long.
 package getoptions
 
 import (
-	"fmt"
+	l "github.com/davidgamba/grepp/logging"
 	"regexp"
 	"strconv"
 	"strings"
@@ -88,14 +88,14 @@ func handleOption(definition OptDef,
 	case "=i":
 		if argument != "" {
 			if iArg, err := strconv.Atoi(argument); err != nil {
-				panic(fmt.Sprintf("Can't convert string to int: %q", err))
+				l.Error.Panic("Can't convert string to int: %q", err)
 			} else {
 				options[alias] = iArg
 			}
 		} else {
 			*i++
 			if iArg, err := strconv.Atoi(args[*i]); err != nil {
-				panic(fmt.Sprintf("Can't convert string to int: %q", err))
+				l.Error.Panic("Can't convert string to int: %q", err)
 			} else {
 				options[alias] = iArg
 			}
@@ -121,24 +121,24 @@ func GetOptLong(args []string,
 	options := Options{}
 	var remaining []string
 
-	fmt.Printf("GetOptLong args: %v\n", args)
-	fmt.Printf("GetOptLong definition: %v\n", definition)
+	l.Debug.Printf("GetOptLong args: %v\n", args)
+	l.Debug.Printf("GetOptLong definition: %v\n", definition)
 
 	setOptionDefaults(definition, &options)
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		fmt.Printf("GetOptLong input arg: %s\n", arg)
+		l.Debug.Printf("GetOptLong input arg: %s\n", arg)
 		if match, argument := isOption(arg, mode); len(match) > 0 {
-			fmt.Printf("GetOptLong match: %v, argument: %v\n", match, argument)
+			l.Debug.Printf("GetOptLong match: %v, argument: %v\n", match, argument)
 			// Check for termination: '--'
 			if match[0] == "--" {
-				fmt.Printf("GetOptLong -- found\n")
+				l.Debug.Printf("GetOptLong -- found\n")
 				remaining = append(remaining, args[i+1:]...)
 				return options, remaining
 			}
 			if _, ok := definition[match[0]]; ok {
-				fmt.Printf("GetOptLong found\n")
+				l.Debug.Printf("GetOptLong found\n")
 				handleOption(definition, match[0], argument, args, &options, &i)
 			} else {
 				// TODO: Handle invalid options
@@ -148,6 +148,6 @@ func GetOptLong(args []string,
 			remaining = append(remaining, arg)
 		}
 	}
-	fmt.Printf("GetOptLong options: %v, remaining: %v\n", options, remaining)
+	l.Debug.Printf("GetOptLong options: %v, remaining: %v\n", options, remaining)
 	return options, remaining
 }
