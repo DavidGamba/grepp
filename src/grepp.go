@@ -94,15 +94,15 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 			fmt.Println(errors.New(filename + ": buffer size to small"))
 			break
 		}
-		match := re.MatchString(string(line))
-		if match {
-			return true
-		}
 		if err != nil {
 			if err != io.EOF {
 				fmt.Printf("ERROR: %v\n", err)
 			}
 			break
+		}
+		match := re.MatchString(string(line))
+		if match {
+			return true
 		}
 	}
 	return false
@@ -147,9 +147,6 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 				fmt.Println(errors.New(filename + ": buffer size to small"))
 				break
 			}
-			match := re.FindAllStringSubmatch(string(line), -1)
-			remainder := reEnd.FindStringSubmatch(string(line))
-			c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
 			// stop reading file
 			if err != nil {
 				if err != io.EOF {
@@ -157,6 +154,9 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 				}
 				break
 			}
+			match := re.FindAllStringSubmatch(string(line), -1)
+			remainder := reEnd.FindStringSubmatch(string(line))
+			c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
 		}
 		close(c)
 	}()
