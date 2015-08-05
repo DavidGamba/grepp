@@ -192,6 +192,13 @@ func stripCtlFromUTF8(str string) string {
 	}, str)
 }
 
+func writeLineMatch(file *os.File, lm lineMatch, replace string) {
+	for _, m := range lm.match {
+		file.WriteString(m[1] + replace)
+	}
+	file.WriteString(lm.end[1] + "\n")
+}
+
 // Each section is in charge of starting with the color or reset.
 func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string, showFile bool) {
 	stringLine := func() string {
@@ -235,6 +242,33 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 	}
 	result += colorReset(useColor) + " " + lm.line
 	fmt.Println(result)
+}
+
+// copyFileContents copies the contents of the file named src to the file named
+// by dst. The file will be created if it does not already exist. If the
+// destination file exists, all it's contents will be replaced by the contents
+// of the source file.
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
 }
 
 func main() {
@@ -324,9 +358,11 @@ func main() {
 			}
 		} else {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
+				var tmpFile *os.File
+				var err error
 				if force {
-					tmpFile, err := ioutil.TempFile("", filepath.Base(filename)+"-")
-					// defer os.Remove(tmpFile.Name())
+					tmpFile, err = ioutil.TempFile("", filepath.Base(filename)+"-")
+					defer tmpFile.Close()
 					if err != nil {
 						println("cannot open ", tmpFile)
 						l.Error.Fatal(err)
@@ -342,13 +378,18 @@ func main() {
 						printLineMatch(d, useColor, useNumber, replace, showFile)
 					}
 					if force {
-						// TODO: This is how I would get non-matching lines to print to the file.
-						// A new function needs to be created to print matched sections to file with the replacement and without color.
 						if len(d.match) == 0 {
-							printLineContext(d, useColor, useNumber, showFile)
+							tmpFile.WriteString(d.line + "\n")
 						} else {
-							printLineMatch(d, useColor, useNumber, replace, showFile)
+							writeLineMatch(tmpFile, d, replace)
 						}
+					}
+				}
+				if force {
+					tmpFile.Close()
+					err = copyFileContents(tmpFile.Name(), filename)
+					if err != nil {
+						l.Warning.Printf("Couldn't update file: %s. '%s'\n", filename, err)
 					}
 				}
 			}
