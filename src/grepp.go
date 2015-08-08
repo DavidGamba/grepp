@@ -23,7 +23,7 @@ import (
 func getMimeType(filename string) string {
 	file, err := os.Open(filename)
 	if err != nil {
-		println("cannot open", filename)
+		l.Warning.Println("cannot open", filename)
 		l.Error.Fatal(err)
 	}
 	defer file.Close()
@@ -44,7 +44,7 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	go func() {
 		fInfo, err := os.Stat(filename)
 		if err != nil {
-			println("cannot stat", filename)
+			l.Warning.Println("cannot stat", filename)
 			l.Error.Fatal(err)
 		}
 		if fInfo.IsDir() {
@@ -55,7 +55,6 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 			l.Trace.Printf("file search: %s", fileSearch)
 			fileMatches, err := filepath.Glob(fileSearch)
 			if err != nil {
-				println("error: ", err)
 				l.Error.Fatal(err)
 			}
 			l.Trace.Printf("fileMatches: %s", fileMatches)
@@ -91,12 +90,12 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if isPrefix {
-			fmt.Println(errors.New(filename + ": buffer size to small"))
+			l.Warning.Println(errors.New(filename + ": buffer size to small"))
 			break
 		}
 		if err != nil {
 			if err != io.EOF {
-				fmt.Printf("ERROR: %v\n", err)
+				l.Error.Println(err)
 			}
 			break
 		}
@@ -144,13 +143,13 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 			n += 1
 			line, isPrefix, err := reader.ReadLine()
 			if isPrefix {
-				fmt.Println(errors.New(filename + ": buffer size to small"))
+				l.Warning.Println(errors.New(filename + ": buffer size to small"))
 				break
 			}
 			// stop reading file
 			if err != nil {
 				if err != io.EOF {
-					fmt.Printf("ERROR: %v\n", err)
+					l.Error.Println(err)
 				}
 				break
 			}
@@ -228,7 +227,7 @@ func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string, show
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, ":", useColor)
 	}
 	result += colorReset(useColor) + " " + stringLine()
-	fmt.Println(result)
+	l.Info.Println(result)
 }
 
 // Each section is in charge of starting with the color or reset.
@@ -241,7 +240,7 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, "-", useColor)
 	}
 	result += colorReset(useColor) + " " + lm.line
-	fmt.Println(result)
+	l.Info.Println(result)
 }
 
 // copyFileContents copies the contents of the file named src to the file named
@@ -272,7 +271,7 @@ func copyFileContents(src, dst string) (err error) {
 }
 
 func main() {
-	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stderr, os.Stderr, os.Stderr)
+	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	l.Debug.Printf("args: %s", os.Args[1:])
 
 	// Controls whether or not to show the filename. If the given location is a
@@ -313,10 +312,10 @@ func main() {
 	debug := options["debug"].(bool)
 	trace := options["trace"].(bool)
 	if debug {
-		l.LogInit(ioutil.Discard, os.Stderr, os.Stderr, os.Stderr, os.Stderr)
+		l.LogInit(ioutil.Discard, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
 	}
 	if trace {
-		l.LogInit(os.Stderr, os.Stderr, os.Stderr, os.Stderr, os.Stderr)
+		l.LogInit(os.Stderr, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
 	}
 
 	if len(remaining) < 1 {
@@ -330,7 +329,7 @@ func main() {
 	}
 	searchBaseInfo, err := os.Stat(searchBase)
 	if err != nil {
-		println("cannot stat", searchBase)
+		l.Error.Println("cannot stat", searchBase)
 		l.Error.Fatal(err)
 	}
 	if searchBaseInfo.IsDir() {
@@ -354,7 +353,7 @@ func main() {
 		}
 		if filenameOnly {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
-				fmt.Printf("%s%s\n", color(ansi.Magenta, filename, useColor), colorReset(useColor))
+				l.Info.Printf("%s%s\n", color(ansi.Magenta, filename, useColor), colorReset(useColor))
 			}
 		} else {
 			if checkPatternInFile(filename, pattern, !caseSensitive) {
@@ -364,7 +363,7 @@ func main() {
 					tmpFile, err = ioutil.TempFile("", filepath.Base(filename)+"-")
 					defer tmpFile.Close()
 					if err != nil {
-						println("cannot open ", tmpFile)
+						l.Error.Println("cannot open ", tmpFile)
 						l.Error.Fatal(err)
 					}
 					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
