@@ -1,11 +1,15 @@
 package getoptions
 
 import (
+	l "github.com/davidgamba/grepp/logging"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 )
 
 func TestIsOption(t *testing.T) {
+	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	cases := []struct {
 		in       string
 		mode     string
@@ -49,23 +53,26 @@ func TestGetOptFlag(t *testing.T) {
 		mode       string
 		definition OptDef
 		options    Options
+		remaining  []string
 	}{
 		{[]string{},
 			"bundling",
-			OptDef{"flag": {"", nil}},
-			Options{},
+			OptDef{"flag": {"", false}},
+			Options{"flag": false},
+			[]string{},
 		},
 		{[]string{"--flag"},
 			"bundling",
-			OptDef{"flag": {"", nil}},
+			OptDef{"flag": {"", false}},
 			Options{"flag": true},
+			[]string{},
 		},
 	}
 	for _, c := range cases {
-		options, err := GetOptLong(c.in, c.mode, c.definition)
+		options, remaining := GetOptLong(c.in, c.mode, c.definition)
 		if !reflect.DeepEqual(options, c.options) {
 			t.Errorf("getOptLong(%q, %q, %v) == (%v, %v), want (%v, %v)",
-				c.in, c.mode, c.definition, options, err, c.options, nil)
+				c.in, c.mode, c.definition, options, remaining, c.options, c.remaining)
 		}
 	}
 }
@@ -76,23 +83,26 @@ func TestGetOptInt(t *testing.T) {
 		mode       string
 		definition OptDef
 		options    Options
+		remaining  []string
 	}{
 		{[]string{"--int=123"},
 			"bundling",
-			OptDef{"int": {"=i", nil}},
+			OptDef{"int": {"=i", 0}},
 			Options{"int": 123},
+			[]string{},
 		},
 		{[]string{"--int", "123"},
 			"bundling",
-			OptDef{"int": {"=i", nil}},
+			OptDef{"int": {"=i", 0}},
 			Options{"int": int(123)},
+			[]string{},
 		},
 	}
 	for _, c := range cases {
 		options, err := GetOptLong(c.in, c.mode, c.definition)
 		if !reflect.DeepEqual(options, c.options) {
 			t.Errorf("getOptLong(%q, %q, %q) == (%v, %v), want (%v, %v)",
-				c.in, c.mode, c.definition, options, err, c.options, nil)
+				c.in, c.mode, c.definition, options, err, c.options, c.remaining)
 		}
 	}
 }
@@ -108,9 +118,9 @@ func TestGetOptLong(t *testing.T) {
 		{[]string{"--string", "hello", "--int", "123", "--flag"},
 			"bundling",
 			OptDef{
-				"flag":   {"", nil},
-				"int":    {"=i", nil},
-				"string": {"=s", nil},
+				"flag":   {"", false},
+				"int":    {"=i", 0},
+				"string": {"=s", ""},
 			},
 			Options{"int": 123, "string": "hello", "flag": true},
 			nil,
@@ -118,9 +128,9 @@ func TestGetOptLong(t *testing.T) {
 		{[]string{"t1", "--string", "hello", "t2", "--int", "123", "t3", "--flag", "t4"},
 			"bundling",
 			OptDef{
-				"flag":   {"", nil},
-				"int":    {"=i", nil},
-				"string": {"=s", nil},
+				"flag":   {"", false},
+				"int":    {"=i", 0},
+				"string": {"=s", ""},
 			},
 			Options{"int": 123, "string": "hello", "flag": true},
 			[]string{"t1", "t2", "t3", "t4"},
