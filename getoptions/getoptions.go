@@ -88,14 +88,14 @@ func handleOption(definition OptDef,
 	case "=i":
 		if argument != "" {
 			if iArg, err := strconv.Atoi(argument); err != nil {
-				l.Error.Panic("Can't convert string to int: %q", err)
+				l.Error.Panicf("Can't convert string to int: %q", err)
 			} else {
 				options[alias] = iArg
 			}
 		} else {
 			*i++
 			if iArg, err := strconv.Atoi(args[*i]); err != nil {
-				l.Error.Panic("Can't convert string to int: %q", err)
+				l.Error.Panicf("Can't convert string to int: %q", err)
 			} else {
 				options[alias] = iArg
 			}
