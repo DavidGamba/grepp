@@ -199,7 +199,7 @@ func writeLineMatch(file *os.File, lm lineMatch, replace string) {
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string, showFile bool) {
+func printLineMatch(w io.Writer, lm lineMatch, useColor, useNumber bool, replace string, showFile bool) {
 	stringLine := func() string {
 		if useColor {
 			result := ansi.Reset
@@ -227,11 +227,11 @@ func printLineMatch(lm lineMatch, useColor, useNumber bool, replace string, show
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, ":", useColor)
 	}
 	result += colorReset(useColor) + " " + stringLine()
-	l.Info.Println(result)
+	fmt.Fprintln(w, result)
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
+func printLineContext(w io.Writer, lm lineMatch, useColor, useNumber bool, showFile bool) {
 	result := ""
 	if showFile {
 		result += color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, "-", useColor)
@@ -240,7 +240,7 @@ func printLineContext(lm lineMatch, useColor, useNumber bool, showFile bool) {
 		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, "-", useColor)
 	}
 	result += colorReset(useColor) + " " + lm.line
-	l.Info.Println(result)
+	fmt.Fprintln(w, result)
 }
 
 // copyFileContents copies the contents of the file named src to the file named
@@ -371,10 +371,10 @@ func main() {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {
 						if context > 0 {
-							printLineContext(d, useColor, useNumber, showFile)
+							printLineContext(os.Stdout, d, useColor, useNumber, showFile)
 						}
 					} else {
-						printLineMatch(d, useColor, useNumber, replace, showFile)
+						printLineMatch(os.Stdout, d, useColor, useNumber, replace, showFile)
 					}
 					if force {
 						if len(d.match) == 0 {
