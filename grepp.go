@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -344,6 +345,30 @@ func main() {
 	l.Debug.Printf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
 		ignoreBinary, caseSensitive, useColor, useNumber, filenameOnly, force)
 
+	cPager := make(chan struct{})
+
+	pager := strings.Split(os.Getenv("PAGER"), " ")
+	var cmd *exec.Cmd
+	// Make sure to use -R to show colors when using less
+	if pager[0] == "less" {
+		pager[0] = "-R"
+		cmd = exec.Command("less", pager...)
+	} else {
+		cmd = exec.Command(pager[0], pager[1:]...)
+	}
+	// create a pipe (blocking)
+	pr, pw := io.Pipe()
+	defer pw.Close()
+	cmd.Stdin = pr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Create a blocking chan, Run the pager and unblock once it is finished
+	go func() {
+		defer close(cPager)
+		cmd.Run()
+	}()
+
 	c := getFileList(searchBase, true)
 
 	for filename := range c {
@@ -371,10 +396,10 @@ func main() {
 				for d := range searchAndReplaceInFile(filename, pattern, !caseSensitive) {
 					if len(d.match) == 0 {
 						if context > 0 {
-							printLineContext(os.Stdout, d, useColor, useNumber, showFile)
+							printLineContext(pw, d, useColor, useNumber, showFile)
 						}
 					} else {
-						printLineMatch(os.Stdout, d, useColor, useNumber, replace, showFile)
+						printLineMatch(pw, d, useColor, useNumber, replace, showFile)
 					}
 					if force {
 						if len(d.match) == 0 {
@@ -394,4 +419,10 @@ func main() {
 			}
 		}
 	}
+
+	// Close pipe
+	pw.Close()
+
+	// Wait for the pager to be finished
+	<-cPager
 }
