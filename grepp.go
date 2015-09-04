@@ -294,6 +294,59 @@ func (opt greppOptions) String() string {
 		opt.ignoreBinary, opt.caseSensitive, opt.useColor, opt.useNumber, opt.filenameOnly, opt.force)
 }
 
+func grepp(ow io.Writer, opt greppOptions) {
+	c := getFileList(opt.searchBase, true)
+
+	for filename := range c {
+		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
+		if opt.ignoreBinary == true && !isText(filename) {
+			continue
+		}
+		if opt.filenameOnly {
+			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
+				l.Info.Printf("%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
+			}
+		} else {
+			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
+				var tmpFile *os.File
+				var err error
+				if opt.force {
+					tmpFile, err = ioutil.TempFile("", filepath.Base(filename)+"-")
+					defer tmpFile.Close()
+					if err != nil {
+						l.Error.Println("cannot open ", tmpFile)
+						l.Error.Fatal(err)
+					}
+					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
+				}
+				for d := range searchAndReplaceInFile(filename, opt.pattern, !opt.caseSensitive) {
+					if len(d.match) == 0 {
+						if opt.context > 0 {
+							printLineContext(ow, d, opt.useColor, opt.useNumber, opt.showFile)
+						}
+					} else {
+						printLineMatch(ow, d, opt.useColor, opt.useNumber, opt.replace, opt.showFile)
+					}
+					if opt.force {
+						if len(d.match) == 0 {
+							tmpFile.WriteString(d.line + "\n")
+						} else {
+							writeLineMatch(tmpFile, d, opt.replace)
+						}
+					}
+				}
+				if opt.force {
+					tmpFile.Close()
+					err = copyFileContents(tmpFile.Name(), filename)
+					if err != nil {
+						l.Warning.Printf("Couldn't update file: %s. '%s'\n", filename, err)
+					}
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	l.Debug.Printf("args: %s", os.Args[1:])
@@ -382,6 +435,7 @@ func main() {
 	cPager := make(chan struct{})
 	// Check if stdout if pipe p or device D
 	statStdout, _ := os.Stdout.Stat()
+	l.Debug.Printf("stats Stdout: %s", statStdout.Mode())
 	if (statStdout.Mode() & os.ModeNamedPipe) == 0 {
 		ow = pw
 		// Create a blocking chan, Run the pager and unblock once it is finished
@@ -395,56 +449,7 @@ func main() {
 		ow = os.Stdout
 	}
 
-	c := getFileList(opt.searchBase, true)
-
-	for filename := range c {
-		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
-		if opt.ignoreBinary == true && !isText(filename) {
-			continue
-		}
-		if opt.filenameOnly {
-			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
-				l.Info.Printf("%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
-			}
-		} else {
-			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
-				var tmpFile *os.File
-				var err error
-				if opt.force {
-					tmpFile, err = ioutil.TempFile("", filepath.Base(filename)+"-")
-					defer tmpFile.Close()
-					if err != nil {
-						l.Error.Println("cannot open ", tmpFile)
-						l.Error.Fatal(err)
-					}
-					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
-				}
-				for d := range searchAndReplaceInFile(filename, opt.pattern, !opt.caseSensitive) {
-					if len(d.match) == 0 {
-						if opt.context > 0 {
-							printLineContext(ow, d, opt.useColor, opt.useNumber, opt.showFile)
-						}
-					} else {
-						printLineMatch(ow, d, opt.useColor, opt.useNumber, opt.replace, opt.showFile)
-					}
-					if opt.force {
-						if len(d.match) == 0 {
-							tmpFile.WriteString(d.line + "\n")
-						} else {
-							writeLineMatch(tmpFile, d, opt.replace)
-						}
-					}
-				}
-				if opt.force {
-					tmpFile.Close()
-					err = copyFileContents(tmpFile.Name(), filename)
-					if err != nil {
-						l.Warning.Printf("Couldn't update file: %s. '%s'\n", filename, err)
-					}
-				}
-			}
-		}
-	}
+	grepp(ow, opt)
 
 	// Close pipe
 	pw.Close()
