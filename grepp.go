@@ -347,6 +347,41 @@ func grepp(ow io.Writer, opt greppOptions) {
 	}
 }
 
+func runInPager(fn func(io.Writer, greppOptions), opt greppOptions) {
+	pager := strings.Split(os.Getenv("PAGER"), " ")
+	var cmd *exec.Cmd
+	// Make sure to use -R to show colors when using less
+	if pager[0] == "less" {
+		pager[0] = "-R"
+		cmd = exec.Command("less", pager...)
+	} else {
+		cmd = exec.Command(pager[0], pager[1:]...)
+	}
+	var pr *io.PipeReader
+	var pw *io.PipeWriter
+	// create a pipe (blocking)
+	pr, pw = io.Pipe()
+	cmd.Stdin = pr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cPager := make(chan struct{})
+	// Create a blocking chan, Run the pager and unblock once it is finished
+	go func() {
+		cmd.Run()
+		close(cPager)
+		os.Exit(0)
+	}()
+
+	fn(pw, opt)
+
+	// Close pipe
+	pw.Close()
+
+	// Wait for the pager to be finished
+	<-cPager
+}
+
 func main() {
 	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	l.Debug.Printf("args: %s", os.Args[1:])
@@ -417,39 +452,9 @@ func main() {
 	statStdout, _ := os.Stdout.Stat()
 	l.Debug.Printf("stats Stdout: %s", statStdout.Mode())
 	if (statStdout.Mode() & os.ModeNamedPipe) == 0 {
-		pager := strings.Split(os.Getenv("PAGER"), " ")
-		var cmd *exec.Cmd
-		// Make sure to use -R to show colors when using less
-		if pager[0] == "less" {
-			pager[0] = "-R"
-			cmd = exec.Command("less", pager...)
-		} else {
-			cmd = exec.Command(pager[0], pager[1:]...)
-		}
-		var pr *io.PipeReader
-		var pw *io.PipeWriter
-		// create a pipe (blocking)
-		pr, pw = io.Pipe()
-		cmd.Stdin = pr
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		cPager := make(chan struct{})
-		// Create a blocking chan, Run the pager and unblock once it is finished
-		go func() {
-			cmd.Run()
-			close(cPager)
-			os.Exit(0)
-		}()
-
-		grepp(pw, opt)
-
-		// Close pipe
-		pw.Close()
-
-		// Wait for the pager to be finished
-		<-cPager
+		runInPager(grepp, opt)
 	} else {
+		opt.useColor = false
 		grepp(os.Stdout, opt)
 	}
 }
