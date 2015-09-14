@@ -347,6 +347,17 @@ func grepp(ow io.Writer, opt greppOptions) {
 	}
 }
 
+/* func runInPager - runs a function passed as an argument and sends the output
+* over a pager.
+*
+* The function could be of any kind as long as it takes an io.Writer as a
+* parameter where to print the output.
+* However, due to Go's lack of generic the function type in this script is set.
+*
+* If PAGER is 'less' it will use the -R option to force less to process ansi
+* colors properly.
+* Otherwise it uses whathever PAGER is set.
+ */
 func runInPager(fn func(io.Writer, greppOptions), opt greppOptions) {
 	pager := strings.Split(os.Getenv("PAGER"), " ")
 	var cmd *exec.Cmd
@@ -382,12 +393,26 @@ func runInPager(fn func(io.Writer, greppOptions), opt greppOptions) {
 	<-cPager
 }
 
+func synopsis() {
+	synopsis := `grepp <pattern> [<location>] [-r <replace pattern> [-f]]
+      [-c] [-n] [-l] [--debug | --trace]
+
+# not available yet
+[-C <lines of context>] [--fp] [--name <file pattern>]
+[--spacing] [--ignore <file pattern>]
+
+grepp -h # show this help
+man grepp # show manpage`
+	fmt.Fprintln(os.Stderr, synopsis)
+}
+
 func main() {
 	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	l.Debug.Printf("args: %s", os.Args[1:])
 
 	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
 		gopt.OptDef{
+			"h":       {"", false}, // Help
 			"I":       {"", true},  // ignoreBinary
 			"c":       {"", false}, // caseSensitive
 			"color":   {"", true},  // useColor
@@ -404,6 +429,11 @@ func main() {
 			"trace":   {"", false}, // trace logging
 		},
 	)
+
+	if options["h"].(bool) {
+		synopsis()
+		os.Exit(1)
+	}
 
 	opt := greppOptions{}
 	opt.ignoreBinary = options["I"].(bool)
