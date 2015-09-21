@@ -294,7 +294,7 @@ func (opt greppOptions) String() string {
 		opt.ignoreBinary, opt.caseSensitive, opt.useColor, opt.useNumber, opt.filenameOnly, opt.force)
 }
 
-func grepp(ow io.Writer, opt greppOptions) {
+func (opt greppOptions) grepp(ow io.Writer) {
 	c := getFileList(opt.searchBase, true)
 
 	for filename := range c {
@@ -358,7 +358,7 @@ func grepp(ow io.Writer, opt greppOptions) {
 * colors properly.
 * Otherwise it uses whathever PAGER is set.
  */
-func runInPager(fn func(io.Writer, greppOptions), opt greppOptions) {
+func runInPager(opt greppOptions) {
 	pager := strings.Split(os.Getenv("PAGER"), " ")
 	var cmd *exec.Cmd
 	// Make sure to use -R to show colors when using less
@@ -384,7 +384,7 @@ func runInPager(fn func(io.Writer, greppOptions), opt greppOptions) {
 		os.Exit(0)
 	}()
 
-	fn(pw, opt)
+	opt.grepp(pw)
 
 	// Close pipe
 	pw.Close()
@@ -482,9 +482,9 @@ func main() {
 	statStdout, _ := os.Stdout.Stat()
 	l.Debug.Printf("stats Stdout: %s", statStdout.Mode())
 	if (statStdout.Mode() & os.ModeNamedPipe) == 0 {
-		runInPager(grepp, opt)
+		runInPager(opt)
 	} else {
 		opt.useColor = false
-		grepp(os.Stdout, opt)
+		opt.grepp(os.Stdout)
 	}
 }
