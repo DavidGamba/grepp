@@ -88,3 +88,26 @@ func TestCheckPatternInFile(t *testing.T) {
 		}
 	}
 }
+
+func TestGetRegex(t *testing.T) {
+	cases := []struct {
+		pattern    string
+		ignoreCase bool
+		line       string
+		before     string
+		match      string
+		after      string
+	}{
+		{"pattern", true, "before pattern after", "before ", "pattern", " after"},
+		{"(pattern)+", true, "before patternpattern after", "before ", "patternpattern", " after"},
+		{"(pattern)(capture)(groups)", true, "before patterncapturegroups after", "before ", "patterncapturegroups", " after"},
+	}
+	for _, c := range cases {
+		re, reEnd := getRegex(c.pattern, c.ignoreCase)
+		match := re.FindAllStringSubmatch(c.line, -1)
+		remainder := reEnd.FindStringSubmatch(c.line)
+		if match[0][1] != c.before || match[0][2] != c.match || remainder[len(remainder)-1] != c.after {
+			t.Errorf("TestGetRegex: expected %q, %q, %q | result match: %q, remainder: %q", c.before, c.match, c.after, match, remainder)
+		}
+	}
+}
