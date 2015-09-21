@@ -192,17 +192,17 @@ func stripCtlFromUTF8(str string) string {
 	}, str)
 }
 
-func writeLineMatch(file *os.File, lm lineMatch, replace string) {
+func (g grepp) writeLineMatch(file *os.File, lm lineMatch) {
 	for _, m := range lm.match {
-		file.WriteString(m[1] + replace)
+		file.WriteString(m[1] + g.replace)
 	}
 	file.WriteString(lm.end[1] + "\n")
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineMatch(w io.Writer, lm lineMatch, useColor, useNumber bool, replace string, showFile bool) {
+func (g grepp) printLineMatch(lm lineMatch) {
 	stringLine := func() string {
-		if useColor {
+		if g.useColor {
 			result := ansi.Reset
 			for _, m := range lm.match {
 				result += fmt.Sprintf("%s%s%s%s%s%s",
@@ -210,7 +210,7 @@ func printLineMatch(w io.Writer, lm lineMatch, useColor, useNumber bool, replace
 					ansi.Red,
 					stripCtlFromUTF8(m[2]),
 					ansi.Green,
-					stripCtlFromUTF8(replace),
+					stripCtlFromUTF8(g.replace),
 					ansi.Reset)
 			}
 			result += stripCtlFromUTF8(lm.end[1])
@@ -221,27 +221,27 @@ func printLineMatch(w io.Writer, lm lineMatch, useColor, useNumber bool, replace
 	}
 
 	result := ""
-	if showFile {
-		result += color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, ":", useColor)
+	if g.showFile {
+		result += color(ansi.Magenta, lm.filename, g.useColor) + " " + color(ansi.Blue, ":", g.useColor)
 	}
-	if useNumber {
-		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, ":", useColor)
+	if g.useNumber {
+		result += color(ansi.Green, strconv.Itoa(lm.n), g.useColor) + color(ansi.Blue, ":", g.useColor)
 	}
-	result += colorReset(useColor) + " " + stringLine()
-	fmt.Fprintln(w, result)
+	result += colorReset(g.useColor) + " " + stringLine()
+	fmt.Fprintln(g.Stdout, result)
 }
 
 // Each section is in charge of starting with the color or reset.
-func printLineContext(w io.Writer, lm lineMatch, useColor, useNumber bool, showFile bool) {
+func (g grepp) printLineContext(lm lineMatch) {
 	result := ""
-	if showFile {
-		result += color(ansi.Magenta, lm.filename, useColor) + " " + color(ansi.Blue, "-", useColor)
+	if g.showFile {
+		result += color(ansi.Magenta, lm.filename, g.useColor) + " " + color(ansi.Blue, "-", g.useColor)
 	}
-	if useNumber {
-		result += color(ansi.Green, strconv.Itoa(lm.n), useColor) + color(ansi.Blue, "-", useColor)
+	if g.useNumber {
+		result += color(ansi.Green, strconv.Itoa(lm.n), g.useColor) + color(ansi.Blue, "-", g.useColor)
 	}
-	result += colorReset(useColor) + " " + lm.line
-	fmt.Fprintln(w, result)
+	result += colorReset(g.useColor) + " " + lm.line
+	fmt.Fprintln(g.Stdout, result)
 }
 
 // copyFileContents copies the contents of the file named src to the file named
@@ -324,16 +324,16 @@ func (g grepp) run() {
 				for d := range searchAndReplaceInFile(filename, g.pattern, !g.caseSensitive) {
 					if len(d.match) == 0 {
 						if g.context > 0 {
-							printLineContext(g.Stdout, d, g.useColor, g.useNumber, g.showFile)
+							g.printLineContext(d)
 						}
 					} else {
-						printLineMatch(g.Stdout, d, g.useColor, g.useNumber, g.replace, g.showFile)
+						g.printLineMatch(d)
 					}
 					if g.force {
 						if len(d.match) == 0 {
 							tmpFile.WriteString(d.line + "\n")
 						} else {
-							writeLineMatch(tmpFile, d, g.replace)
+							g.writeLineMatch(tmpFile, d)
 						}
 					}
 				}
