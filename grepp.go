@@ -287,6 +287,8 @@ type greppOptions struct {
 	pattern           string
 	filePattern       string
 	ignoreFilePattern string
+	Stdout            io.Writer
+	Stderr            io.Writer
 }
 
 func (opt greppOptions) String() string {
@@ -294,7 +296,7 @@ func (opt greppOptions) String() string {
 		opt.ignoreBinary, opt.caseSensitive, opt.useColor, opt.useNumber, opt.filenameOnly, opt.force)
 }
 
-func (opt greppOptions) grepp(ow io.Writer) {
+func (opt greppOptions) grepp() {
 	c := getFileList(opt.searchBase, true)
 
 	for filename := range c {
@@ -304,7 +306,7 @@ func (opt greppOptions) grepp(ow io.Writer) {
 		}
 		if opt.filenameOnly {
 			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
-				fmt.Fprintf(ow, "%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
+				fmt.Fprintf(opt.Stdout, "%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
 			}
 		} else {
 			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
@@ -322,10 +324,10 @@ func (opt greppOptions) grepp(ow io.Writer) {
 				for d := range searchAndReplaceInFile(filename, opt.pattern, !opt.caseSensitive) {
 					if len(d.match) == 0 {
 						if opt.context > 0 {
-							printLineContext(ow, d, opt.useColor, opt.useNumber, opt.showFile)
+							printLineContext(opt.Stdout, d, opt.useColor, opt.useNumber, opt.showFile)
 						}
 					} else {
-						printLineMatch(ow, d, opt.useColor, opt.useNumber, opt.replace, opt.showFile)
+						printLineMatch(opt.Stdout, d, opt.useColor, opt.useNumber, opt.replace, opt.showFile)
 					}
 					if opt.force {
 						if len(d.match) == 0 {
@@ -384,7 +386,9 @@ func runInPager(opt greppOptions) {
 		os.Exit(0)
 	}()
 
-	opt.grepp(pw)
+	opt.Stdout = pw
+	opt.Stderr = pw
+	opt.grepp()
 
 	// Close pipe
 	pw.Close()
@@ -485,6 +489,8 @@ func main() {
 		runInPager(opt)
 	} else {
 		opt.useColor = false
-		opt.grepp(os.Stdout)
+		opt.Stdout = os.Stdout
+		opt.Stderr = os.Stderr
+		opt.grepp()
 	}
 }
