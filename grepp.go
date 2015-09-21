@@ -271,7 +271,7 @@ func copyFileContents(src, dst string) (err error) {
 	return
 }
 
-type greppOptions struct {
+type grepp struct {
 	ignoreBinary  bool
 	caseSensitive bool
 	useColor      bool
@@ -291,28 +291,28 @@ type greppOptions struct {
 	Stderr            io.Writer
 }
 
-func (opt greppOptions) String() string {
+func (g grepp) String() string {
 	return fmt.Sprintf("ignoreBinary: %v, caseSensitive: %v, useColor %v, useNumber %v, filenameOnly %v, force %v",
-		opt.ignoreBinary, opt.caseSensitive, opt.useColor, opt.useNumber, opt.filenameOnly, opt.force)
+		g.ignoreBinary, g.caseSensitive, g.useColor, g.useNumber, g.filenameOnly, g.force)
 }
 
-func (opt greppOptions) grepp() {
-	c := getFileList(opt.searchBase, true)
+func (g grepp) run() {
+	c := getFileList(g.searchBase, true)
 
 	for filename := range c {
 		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
-		if opt.ignoreBinary == true && !isText(filename) {
+		if g.ignoreBinary == true && !isText(filename) {
 			continue
 		}
-		if opt.filenameOnly {
-			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
-				fmt.Fprintf(opt.Stdout, "%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
+		if g.filenameOnly {
+			if checkPatternInFile(filename, g.pattern, !g.caseSensitive) {
+				fmt.Fprintf(g.Stdout, "%s%s\n", color(ansi.Magenta, filename, g.useColor), colorReset(g.useColor))
 			}
 		} else {
-			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
+			if checkPatternInFile(filename, g.pattern, !g.caseSensitive) {
 				var tmpFile *os.File
 				var err error
-				if opt.force {
+				if g.force {
 					tmpFile, err = ioutil.TempFile("", filepath.Base(filename)+"-")
 					defer tmpFile.Close()
 					if err != nil {
@@ -321,23 +321,23 @@ func (opt greppOptions) grepp() {
 					}
 					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
 				}
-				for d := range searchAndReplaceInFile(filename, opt.pattern, !opt.caseSensitive) {
+				for d := range searchAndReplaceInFile(filename, g.pattern, !g.caseSensitive) {
 					if len(d.match) == 0 {
-						if opt.context > 0 {
-							printLineContext(opt.Stdout, d, opt.useColor, opt.useNumber, opt.showFile)
+						if g.context > 0 {
+							printLineContext(g.Stdout, d, g.useColor, g.useNumber, g.showFile)
 						}
 					} else {
-						printLineMatch(opt.Stdout, d, opt.useColor, opt.useNumber, opt.replace, opt.showFile)
+						printLineMatch(g.Stdout, d, g.useColor, g.useNumber, g.replace, g.showFile)
 					}
-					if opt.force {
+					if g.force {
 						if len(d.match) == 0 {
 							tmpFile.WriteString(d.line + "\n")
 						} else {
-							writeLineMatch(tmpFile, d, opt.replace)
+							writeLineMatch(tmpFile, d, g.replace)
 						}
 					}
 				}
-				if opt.force {
+				if g.force {
 					tmpFile.Close()
 					err = copyFileContents(tmpFile.Name(), filename)
 					if err != nil {
@@ -360,7 +360,7 @@ func (opt greppOptions) grepp() {
 * colors properly.
 * Otherwise it uses whathever PAGER is set.
  */
-func runInPager(opt greppOptions) {
+func runInPager(caller grepp) {
 	pager := strings.Split(os.Getenv("PAGER"), " ")
 	var cmd *exec.Cmd
 	// Make sure to use -R to show colors when using less
@@ -386,9 +386,9 @@ func runInPager(opt greppOptions) {
 		os.Exit(0)
 	}()
 
-	opt.Stdout = pw
-	opt.Stderr = pw
-	opt.grepp()
+	caller.Stdout = pw
+	caller.Stderr = pw
+	caller.run()
 
 	// Close pipe
 	pw.Close()
@@ -439,15 +439,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	opt := greppOptions{}
-	opt.ignoreBinary = options["I"].(bool)
-	opt.caseSensitive = options["c"].(bool)
-	opt.useColor = options["color"].(bool)
-	opt.useNumber = options["n"].(bool)
-	opt.filenameOnly = options["l"].(bool)
-	opt.replace = options["r"].(string)
-	opt.force = options["f"].(bool)
-	opt.context = options["C"].(int)
+	g := grepp{}
+	g.ignoreBinary = options["I"].(bool)
+	g.caseSensitive = options["c"].(bool)
+	g.useColor = options["color"].(bool)
+	g.useNumber = options["n"].(bool)
+	g.filenameOnly = options["l"].(bool)
+	g.replace = options["r"].(string)
+	g.force = options["f"].(bool)
+	g.context = options["C"].(int)
 
 	debug := options["debug"].(bool)
 	trace := options["trace"].(bool)
@@ -462,35 +462,35 @@ func main() {
 		l.Error.Fatal("Missing pattern!")
 	}
 	if len(remaining) < 2 {
-		opt.searchBase = "."
+		g.searchBase = "."
 	} else {
-		opt.searchBase = remaining[1]
+		g.searchBase = remaining[1]
 	}
-	searchBaseInfo, err := os.Stat(opt.searchBase)
+	searchBaseInfo, err := os.Stat(g.searchBase)
 	if err != nil {
-		l.Error.Println("cannot stat", opt.searchBase)
+		l.Error.Println("cannot stat", g.searchBase)
 		l.Error.Fatal(err)
 	}
 	if searchBaseInfo.IsDir() {
-		opt.showFile = true
+		g.showFile = true
 	} else {
-		opt.showFile = false
+		g.showFile = false
 	}
 
-	opt.pattern = remaining[0]
+	g.pattern = remaining[0]
 
-	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", opt.pattern, opt.searchBase, opt.replace)
-	l.Debug.Printf(fmt.Sprintln(opt))
+	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", g.pattern, g.searchBase, g.replace)
+	l.Debug.Printf(fmt.Sprintln(g))
 
 	// Check if stdout is pipe p or device D
 	statStdout, _ := os.Stdout.Stat()
 	l.Debug.Printf("stats Stdout: %s", statStdout.Mode())
 	if (statStdout.Mode() & os.ModeNamedPipe) == 0 {
-		runInPager(opt)
+		runInPager(g)
 	} else {
-		opt.useColor = false
-		opt.Stdout = os.Stdout
-		opt.Stderr = os.Stderr
-		opt.grepp()
+		g.useColor = false
+		g.Stdout = os.Stdout
+		g.Stderr = os.Stderr
+		g.run()
 	}
 }
