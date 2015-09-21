@@ -304,7 +304,7 @@ func (opt greppOptions) grepp(ow io.Writer) {
 		}
 		if opt.filenameOnly {
 			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
-				l.Info.Printf("%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
+				fmt.Fprintf(ow, "%s%s\n", color(ansi.Magenta, filename, opt.useColor), colorReset(opt.useColor))
 			}
 		} else {
 			if checkPatternInFile(filename, opt.pattern, !opt.caseSensitive) {
