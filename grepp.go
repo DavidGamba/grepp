@@ -349,6 +349,12 @@ func (g grepp) run() {
 	}
 }
 
+type command interface {
+	SetStdout(io.Writer)
+	SetStderr(io.Writer)
+	run()
+}
+
 /* func runInPager - runs a function passed as an argument and sends the output
 * over a pager.
 *
@@ -360,7 +366,7 @@ func (g grepp) run() {
 * colors properly.
 * Otherwise it uses whathever PAGER is set.
  */
-func runInPager(caller grepp) {
+func runInPager(caller command) {
 	pager := strings.Split(os.Getenv("PAGER"), " ")
 	var cmd *exec.Cmd
 	// Make sure to use -R to show colors when using less
@@ -386,8 +392,8 @@ func runInPager(caller grepp) {
 		os.Exit(0)
 	}()
 
-	caller.Stdout = pw
-	caller.Stderr = pw
+	caller.SetStdout(pw)
+	caller.SetStderr(pw)
 	caller.run()
 
 	// Close pipe
@@ -395,6 +401,14 @@ func runInPager(caller grepp) {
 
 	// Wait for the pager to be finished
 	<-cPager
+}
+
+func (g *grepp) SetStderr(i io.Writer) {
+	g.Stderr = i
+}
+
+func (g *grepp) SetStdout(i io.Writer) {
+	g.Stdout = i
 }
 
 func synopsis() {
@@ -451,12 +465,19 @@ func main() {
 
 	debug := options["debug"].(bool)
 	trace := options["trace"].(bool)
+
+	// Check if stdout is pipe p or device D
+	statStdout, _ := os.Stdout.Stat()
+	stdoutIsDevice := (statStdout.Mode() & os.ModeDevice) != 0
+
 	if debug {
 		l.LogInit(ioutil.Discard, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
 	}
 	if trace {
 		l.LogInit(os.Stderr, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
 	}
+
+	l.Debug.Printf("stats Stdout: %s, is device: %v", statStdout.Mode(), stdoutIsDevice)
 
 	if len(remaining) < 1 {
 		l.Error.Fatal("Missing pattern!")
@@ -482,11 +503,9 @@ func main() {
 	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", g.pattern, g.searchBase, g.replace)
 	l.Debug.Printf(fmt.Sprintln(g))
 
-	// Check if stdout is pipe p or device D
-	statStdout, _ := os.Stdout.Stat()
-	l.Debug.Printf("stats Stdout: %s", statStdout.Mode())
-	if (statStdout.Mode() & os.ModeNamedPipe) == 0 {
-		runInPager(g)
+	if stdoutIsDevice {
+		l.Debug.Println("runInPager")
+		runInPager(&g)
 	} else {
 		g.useColor = false
 		g.Stdout = os.Stdout
