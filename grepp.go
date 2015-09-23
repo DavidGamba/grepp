@@ -349,12 +349,15 @@ func (g grepp) Run() {
 	}
 }
 
-func (g *grepp) SetStderr(i io.Writer) {
-	g.Stderr = i
+func (g *grepp) SetStderr(w io.Writer) {
+	l.Warning.SetOutput(w)
+	l.Error.SetOutput(w)
+	g.Stderr = w
 }
 
-func (g *grepp) SetStdout(i io.Writer) {
-	g.Stdout = i
+func (g *grepp) SetStdout(w io.Writer) {
+	l.Info.SetOutput(w)
+	g.Stdout = w
 }
 
 func synopsis() {
@@ -416,11 +419,11 @@ func main() {
 	statStdout, _ := os.Stdout.Stat()
 	stdoutIsDevice := (statStdout.Mode() & os.ModeDevice) != 0
 
-	if debug {
-		l.LogInit(ioutil.Discard, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
+	if debug || trace {
+		l.Debug.SetOutput(os.Stderr)
 	}
 	if trace {
-		l.LogInit(os.Stderr, os.Stderr, os.Stdout, os.Stderr, os.Stderr)
+		l.Trace.SetOutput(os.Stderr)
 	}
 
 	l.Debug.Printf("stats Stdout: %s, is device: %v", statStdout.Mode(), stdoutIsDevice)
