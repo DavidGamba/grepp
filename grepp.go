@@ -7,10 +7,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	gopt "github.com/davidgamba/grepp/getoptions"
-	l "github.com/davidgamba/grepp/logging"
-	"github.com/davidgamba/grepp/runInPager"
-	"github.com/mgutz/ansi"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +15,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	gopt "github.com/davidgamba/grepp/getoptions"
+	l "github.com/davidgamba/grepp/logging"
+	"github.com/davidgamba/grepp/runInPager"
+	"github.com/mgutz/ansi"
 )
 
 func getMimeType(filename string) string {
@@ -141,7 +142,7 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 		// line number
 		n := 0
 		for {
-			n += 1
+			n++
 			line, isPrefix, err := reader.ReadLine()
 			if isPrefix {
 				l.Warning.Println(errors.New(filename + ": buffer size too small"))
@@ -166,17 +167,15 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 func color(color string, line string, useColor bool) string {
 	if useColor {
 		return fmt.Sprintf("%s%s", color, line)
-	} else {
-		return fmt.Sprintf("%s", line)
 	}
+	return fmt.Sprintf("%s", line)
 }
 
 func colorReset(useColor bool) string {
 	if useColor {
 		return fmt.Sprintf("%s", ansi.Reset)
-	} else {
-		return ""
 	}
+	return ""
 }
 
 //TODO: Don't drop the control char but scape it and show it like less.
@@ -215,9 +214,8 @@ func (g grepp) printLineMatch(lm lineMatch) {
 			}
 			result += stripCtlFromUTF8(lm.end[1])
 			return result
-		} else {
-			return stripCtlFromUTF8(lm.line)
 		}
+		return stripCtlFromUTF8(lm.line)
 	}
 
 	result := ""
