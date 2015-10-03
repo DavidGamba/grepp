@@ -379,21 +379,22 @@ func main() {
 
 	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
 		gopt.OptDef{
-			"h":       {"", false}, // Help
-			"I":       {"", true},  // ignoreBinary
-			"c":       {"", false}, // caseSensitive
-			"color":   {"", true},  // useColor
-			"n":       {"", true},  // useNumber
-			"l":       {"", false}, // filenameOnly
-			"r":       {"=s", ""},  // replace
-			"f":       {"", false}, // force
-			"C":       {"=i", 0},   // context
-			"fp":      {"", false}, // fullPath - Used to show the file full path instead of the relative to the current dir.
-			"name":    {"=s", ""},  // filePattern - Use to further filter the search to files matching that pattern.
-			"ignore":  {"=s", ""},  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
-			"spacing": {"", false}, // keepSpacing - Do not remove initial spacing.
-			"debug":   {"", false}, // debug logging
-			"trace":   {"", false}, // trace logging
+			"h":        {"", false}, // Help
+			"I":        {"", true},  // ignoreBinary
+			"c":        {"", false}, // caseSensitive
+			"color":    {"", true},  // useColor
+			"n":        {"", true},  // useNumber
+			"l":        {"", false}, // filenameOnly
+			"r":        {"=s", ""},  // replace
+			"f":        {"", false}, // force
+			"C":        {"=i", 0},   // context
+			"fp":       {"", false}, // fullPath - Used to show the file full path instead of the relative to the current dir.
+			"name":     {"=s", ""},  // filePattern - Use to further filter the search to files matching that pattern.
+			"ignore":   {"=s", ""},  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
+			"spacing":  {"", false}, // keepSpacing - Do not remove initial spacing.
+			"no-pager": {"", false}, // Don't use pager for output
+			"debug":    {"", false}, // debug logging
+			"trace":    {"", false}, // trace logging
 		},
 	)
 
@@ -411,6 +412,8 @@ func main() {
 	g.replace = options["r"].(string)
 	g.force = options["f"].(bool)
 	g.context = options["C"].(int)
+
+	noPager := options["no-pager"].(bool)
 
 	debug := options["debug"].(bool)
 	trace := options["trace"].(bool)
@@ -452,9 +455,14 @@ func main() {
 	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", g.pattern, g.searchBase, g.replace)
 	l.Debug.Printf(fmt.Sprintln(g))
 
-	if stdoutIsDevice {
+	if !noPager && stdoutIsDevice {
 		l.Debug.Println("runInPager")
 		runInPager.Command(&g)
+		os.Exit(0)
+	} else if noPager && stdoutIsDevice {
+		g.Stdout = os.Stdout
+		g.Stderr = os.Stderr
+		g.Run()
 	} else {
 		g.useColor = false
 		g.Stdout = os.Stdout
