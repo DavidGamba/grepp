@@ -128,7 +128,7 @@ func getRegex(pattern string, ignoreCase bool) (re, reEnd *regexp.Regexp) {
 	return
 }
 
-func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan lineMatch {
+func searchInFile(filename, pattern string, ignoreCase bool) <-chan lineMatch {
 	c := make(chan lineMatch)
 	re, reEnd := getRegex(pattern, ignoreCase)
 	go func() {
@@ -319,7 +319,7 @@ func (g grepp) Run() {
 					}
 					l.Debug.Printf("tmpFile: %v", tmpFile.Name())
 				}
-				for d := range searchAndReplaceInFile(filename, g.pattern, !g.caseSensitive) {
+				for d := range searchInFile(filename, g.pattern, !g.caseSensitive) {
 					if len(d.match) == 0 {
 						if g.context > 0 {
 							g.printLineContext(d)
