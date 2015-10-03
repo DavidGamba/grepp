@@ -22,6 +22,10 @@ import (
 	"github.com/mgutz/ansi"
 )
 
+// Buffer Size used to read files when searching through them.
+// Default value should cover most cases.
+var bufferSize int
+
 func getMimeType(filename string) string {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -87,7 +91,7 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 	}
 	defer file.Close()
 
-	reader := bufio.NewReaderSize(file, 4*1024)
+	reader := bufio.NewReaderSize(file, bufferSize)
 
 	for {
 		line, isPrefix, err := reader.ReadLine()
@@ -138,7 +142,7 @@ func searchInFile(filename, pattern string, ignoreCase bool) <-chan lineMatch {
 		}
 		defer file.Close()
 
-		reader := bufio.NewReaderSize(file, 4*1024)
+		reader := bufio.NewReaderSize(file, bufferSize)
 		// line number
 		n := 0
 		for {
@@ -377,22 +381,23 @@ func main() {
 
 	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
 		gopt.OptDef{
-			"h":        {"", false}, // Help
-			"I":        {"", true},  // ignoreBinary
-			"c":        {"", false}, // caseSensitive
-			"color":    {"", true},  // useColor
-			"n":        {"", true},  // useNumber
-			"l":        {"", false}, // filenameOnly
-			"r":        {"=s", ""},  // replace
-			"f":        {"", false}, // force
-			"C":        {"=i", 0},   // context
-			"fp":       {"", false}, // fullPath - Used to show the file full path instead of the relative to the current dir.
-			"name":     {"=s", ""},  // filePattern - Use to further filter the search to files matching that pattern.
-			"ignore":   {"=s", ""},  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
-			"spacing":  {"", false}, // keepSpacing - Do not remove initial spacing.
-			"no-pager": {"", false}, // Don't use pager for output
-			"debug":    {"", false}, // debug logging
-			"trace":    {"", false}, // trace logging
+			"h":        {"", false},      // Help
+			"I":        {"", true},       // ignoreBinary
+			"c":        {"", false},      // caseSensitive
+			"color":    {"", true},       // useColor
+			"n":        {"", true},       // useNumber
+			"l":        {"", false},      // filenameOnly
+			"r":        {"=s", ""},       // replace
+			"f":        {"", false},      // force
+			"C":        {"=i", 0},        // context
+			"fp":       {"", false},      // fullPath - Used to show the file full path instead of the relative to the current dir.
+			"name":     {"=s", ""},       // filePattern - Use to further filter the search to files matching that pattern.
+			"ignore":   {"=s", ""},       // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
+			"spacing":  {"", false},      // keepSpacing - Do not remove initial spacing.
+			"no-pager": {"", false},      // Don't use pager for output
+			"buffer":   {"=i", 4 * 1024}, // bufferSize
+			"debug":    {"", false},      // debug logging
+			"trace":    {"", false},      // trace logging
 		},
 	)
 
@@ -411,6 +416,7 @@ func main() {
 	g.force = options["f"].(bool)
 	g.context = options["C"].(int)
 
+	bufferSize = options["buffer"].(int)
 	noPager := options["no-pager"].(bool)
 
 	debug := options["debug"].(bool)
