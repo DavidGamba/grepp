@@ -91,7 +91,7 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if isPrefix {
-			l.Warning.Println(errors.New(filename + ": buffer size to small"))
+			l.Warning.Println(errors.New(filename + ": buffer size too small"))
 			break
 		}
 		if err != nil {
@@ -144,7 +144,7 @@ func searchAndReplaceInFile(filename, pattern string, ignoreCase bool) <-chan li
 			n += 1
 			line, isPrefix, err := reader.ReadLine()
 			if isPrefix {
-				l.Warning.Println(errors.New(filename + ": buffer size to small"))
+				l.Warning.Println(errors.New(filename + ": buffer size too small"))
 				break
 			}
 			// stop reading file
