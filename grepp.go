@@ -19,6 +19,7 @@ import (
 	gopt "github.com/davidgamba/grepp/getoptions"
 	l "github.com/davidgamba/grepp/logging"
 	"github.com/davidgamba/grepp/runInPager"
+	"github.com/davidgamba/grepp/semver"
 	"github.com/mgutz/ansi"
 )
 
@@ -398,11 +399,18 @@ func main() {
 			"buffer":   {"=i", 4 * 1024}, // bufferSize
 			"debug":    {"", false},      // debug logging
 			"trace":    {"", false},      // trace logging
+			"version":  {"", false},      // version info
 		},
 	)
 
 	if options["h"].(bool) {
 		synopsis()
+		os.Exit(1)
+	}
+
+	if options["version"].(bool) {
+		version := semver.Version{0, 9, 0, "dev"}
+		fmt.Println(version)
 		os.Exit(1)
 	}
 
