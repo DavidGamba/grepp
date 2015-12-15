@@ -409,7 +409,7 @@ func main() {
 	}
 
 	if options["version"].(bool) {
-		version := semver.Version{0, 9, 0, "dev"}
+		version := semver.Version{Major: 0, Minor: 9, Patch: 0, PreReleaseLabel: "dev"}
 		fmt.Println(version)
 		os.Exit(1)
 	}

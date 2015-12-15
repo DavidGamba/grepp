@@ -83,7 +83,7 @@ func TestCheckPatternInFile(t *testing.T) {
 	for _, c := range cases {
 		r := checkPatternInFile(c.file, c.pattern, c.ignoreCase)
 		if r != c.result {
-			t.Errorf("checkPatternInFile(%q, %q, %q) == (%q), want (%q)",
+			t.Errorf("checkPatternInFile(%q, %q, %v) == (%v), want (%v)",
 				c.file, c.pattern, c.ignoreCase, r, c.result)
 		}
 	}
