@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	gopt "github.com/davidgamba/grepp/getoptions"
+	"github.com/davidgamba/go-getoptions"
 	l "github.com/davidgamba/grepp/logging"
 	"github.com/davidgamba/grepp/runInPager"
 	"github.com/davidgamba/grepp/semver"
@@ -25,7 +25,7 @@ import (
 
 // Buffer Size used to read files when searching through them.
 // Default value should cover most cases.
-var bufferSize int
+var bufferSize = 4 * 1024
 
 func getMimeType(filename string) string {
 	file, err := os.Open(filename)
@@ -380,55 +380,46 @@ func main() {
 	l.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, os.Stderr)
 	l.Debug.Printf("args: %s", os.Args[1:])
 
-	options, remaining := gopt.GetOptLong(os.Args[1:], "normal",
-		gopt.OptDef{
-			"h":        {"", false},      // Help
-			"I":        {"", true},       // ignoreBinary
-			"c":        {"", false},      // caseSensitive
-			"color":    {"", true},       // useColor
-			"n":        {"", true},       // useNumber
-			"l":        {"", false},      // filenameOnly
-			"r":        {"=s", ""},       // replace
-			"f":        {"", false},      // force
-			"C":        {"=i", 0},        // context
-			"fp":       {"", false},      // fullPath - Used to show the file full path instead of the relative to the current dir.
-			"name":     {"=s", ""},       // filePattern - Use to further filter the search to files matching that pattern.
-			"ignore":   {"=s", ""},       // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
-			"spacing":  {"", false},      // keepSpacing - Do not remove initial spacing.
-			"no-pager": {"", false},      // Don't use pager for output
-			"buffer":   {"=i", 4 * 1024}, // bufferSize
-			"debug":    {"", false},      // debug logging
-			"trace":    {"", false},      // trace logging
-			"version":  {"", false},      // version info
-		},
-	)
+	var noPager bool
+	var debug, trace bool
+	g := grepp{}
+	opt := getoptions.GetOptions()
+	opt.Flag("h")       // Help
+	opt.Flag("version") // version info
+	opt.FlagVar(&g.ignoreBinary, "I")
+	opt.FlagVar(&g.caseSensitive, "c")
+	opt.FlagVar(&g.useColor, "color")
+	opt.FlagVar(&g.useNumber, "n")
+	opt.FlagVar(&g.filenameOnly, "l")
+	opt.StringVar(&g.replace, "r")
+	opt.FlagVar(&g.force, "f")
+	opt.IntVar(&g.context, "C")
+	opt.IntVar(&bufferSize, "buffer")
+	opt.FlagVar(&noPager, "no-pager")
+	opt.FlagVar(&debug, "debug") // debug logging
+	opt.FlagVar(&trace, "trace") // trace logging
+	// "fp"      // fullPath - Used to show the file full path instead of the relative to the current dir.
+	// "name"    // filePattern - Use to further filter the search to files matching that pattern.
+	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
+	// "spacing" // keepSpacing - Do not remove initial spacing.
+	// "no-page" // Don't use pager for output
+	// "buffer"  // bufferSize
+	remaining, err := opt.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-	if options["h"].(bool) {
+	if opt.Option["h"] != nil && opt.Option["h"].(bool) {
 		synopsis()
 		os.Exit(1)
 	}
 
-	if options["version"].(bool) {
+	if opt.Option["version"] != nil && opt.Option["version"].(bool) {
 		version := semver.Version{Major: 0, Minor: 9, Patch: 0, PreReleaseLabel: "dev"}
 		fmt.Println(version)
 		os.Exit(1)
 	}
-
-	g := grepp{}
-	g.ignoreBinary = options["I"].(bool)
-	g.caseSensitive = options["c"].(bool)
-	g.useColor = options["color"].(bool)
-	g.useNumber = options["n"].(bool)
-	g.filenameOnly = options["l"].(bool)
-	g.replace = options["r"].(string)
-	g.force = options["f"].(bool)
-	g.context = options["C"].(int)
-
-	bufferSize = options["buffer"].(int)
-	noPager := options["no-pager"].(bool)
-
-	debug := options["debug"].(bool)
-	trace := options["trace"].(bool)
 
 	// Check if stdout is pipe p or device D
 	statStdout, _ := os.Stdout.Stat()
