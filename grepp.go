@@ -458,6 +458,8 @@ func main() {
 	l.Debug.Printf("pattern: %s, searchBase: %s, replace: %s", g.pattern, g.searchBase, g.replace)
 	l.Debug.Printf(fmt.Sprintln(g))
 
+	g.useColor = !g.useColor
+
 	if !noPager && stdoutIsDevice {
 		l.Debug.Println("runInPager")
 		runInPager.Command(&g)
