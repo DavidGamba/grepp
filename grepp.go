@@ -84,11 +84,7 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	return c
 }
 
-type errorBufferTooSmall string
-
-func (b errorBufferTooSmall) Error() string {
-	return fmt.Sprintf("%s: buffer size too small", string(b))
-}
+var errorBufferSizeTooSmall = fmt.Errorf("buffer size too small")
 
 func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool, error) {
 	re, _ := getRegex(pattern, ignoreCase)
@@ -104,7 +100,7 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool,
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if isPrefix {
-			errRet = errorBufferTooSmall(filename)
+			errRet = errorBufferSizeTooSmall
 			break
 		}
 		if err != nil {
@@ -299,12 +295,14 @@ type grepp struct {
 	searchBase    string
 	// Controls whether or not to show the filename. If the given location is a
 	// file then there is no need to show the filename
-	showFile          bool
-	pattern           string
-	filePattern       string
-	ignoreFilePattern string
-	Stdout            io.Writer
-	Stderr            io.Writer
+	showFile             bool
+	showBufferSizeErrors bool
+	bufferSizeErrorsC    int
+	pattern              string
+	filePattern          string
+	ignoreFilePattern    string
+	Stdout               io.Writer
+	Stderr               io.Writer
 }
 
 func (g grepp) String() string {
@@ -323,9 +321,14 @@ func (g grepp) Run() {
 		if g.filenameOnly {
 			ok, err := checkPatternInFile(filename, g.pattern, !g.caseSensitive)
 			if err != nil {
-				if _, ok := err.(errorBufferTooSmall); ok {
-					g.printMinorWarning(err.Error())
-				} else {
+				switch err {
+				case errorBufferSizeTooSmall:
+					if g.showBufferSizeErrors {
+						g.printMinorWarning(fmt.Sprintf("%s : %s", filename, err.Error()))
+					} else {
+						g.bufferSizeErrorsC++
+					}
+				default:
 					fmt.Fprintf(g.Stderr, "%s", err)
 				}
 			} else if ok {
@@ -334,9 +337,14 @@ func (g grepp) Run() {
 		} else {
 			ok, err := checkPatternInFile(filename, g.pattern, !g.caseSensitive)
 			if err != nil {
-				if _, ok := err.(errorBufferTooSmall); ok {
-					g.printMinorWarning(err.Error())
-				} else {
+				switch err {
+				case errorBufferSizeTooSmall:
+					if g.showBufferSizeErrors {
+						g.printMinorWarning(fmt.Sprintf("%s : %s", filename, err.Error()))
+					} else {
+						g.bufferSizeErrorsC++
+					}
+				default:
 					fmt.Fprintf(g.Stderr, "%s", err)
 				}
 			} else if ok {
@@ -376,6 +384,10 @@ func (g grepp) Run() {
 				}
 			}
 		}
+	}
+
+	if g.bufferSizeErrorsC > 0 {
+		fmt.Fprintf(g.Stderr, "WARNING: %s found %d times", errorBufferSizeTooSmall, g.bufferSizeErrorsC)
 	}
 }
 
@@ -422,6 +434,7 @@ func main() {
 	opt.FlagVar(&g.force, "f")
 	opt.IntVar(&g.context, "C")
 	opt.IntVar(&bufferSize, "buffer")
+	opt.FlagVar(&g.showBufferSizeErrors, "show-buffer-errors", "sbe")
 	opt.FlagVar(&noPager, "no-pager")
 	opt.FlagVar(&debug, "debug") // debug logging
 	opt.FlagVar(&trace, "trace") // trace logging
@@ -430,7 +443,6 @@ func main() {
 	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
 	// "spacing" // keepSpacing - Do not remove initial spacing.
 	// "no-page" // Don't use pager for output
-	// "buffer"  // bufferSize
 	remaining, err := opt.Parse(os.Args[1:])
 	if err != nil {
 		fmt.Println(err)
