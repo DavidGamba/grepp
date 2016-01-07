@@ -84,34 +84,41 @@ func getFileList(filename string, ignoreDirs bool) <-chan string {
 	return c
 }
 
-func checkPatternInFile(filename string, pattern string, ignoreCase bool) bool {
+type errorBufferTooSmall string
+
+func (b errorBufferTooSmall) Error() string {
+	return fmt.Sprintf("%s: buffer size too small", string(b))
+}
+
+func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool, error) {
 	re, _ := getRegex(pattern, ignoreCase)
 	file, err := os.Open(filename)
 	if err != nil {
-		l.Error.Fatal(err)
+		return false, err
 	}
 	defer file.Close()
 
 	reader := bufio.NewReaderSize(file, bufferSize)
 
+	var errRet error
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if isPrefix {
-			l.Warning.Println(errors.New(filename + ": buffer size too small"))
+			errRet = errorBufferTooSmall(filename)
 			break
 		}
 		if err != nil {
 			if err != io.EOF {
-				l.Error.Println(err)
+				errRet = err
 			}
 			break
 		}
 		match := re.MatchString(string(line))
 		if match {
-			return true
+			return true, errRet
 		}
 	}
-	return false
+	return false, errRet
 }
 
 type lineMatch struct {
@@ -235,6 +242,12 @@ func (g grepp) printLineMatch(lm lineMatch) {
 }
 
 // Each section is in charge of starting with the color or reset.
+func (g grepp) printMinorWarning(line string) {
+	result := color(ansi.LightBlack, line, g.useColor)
+	fmt.Fprintln(g.Stderr, result)
+}
+
+// Each section is in charge of starting with the color or reset.
 func (g grepp) printLineContext(lm lineMatch) {
 	result := ""
 	if g.showFile {
@@ -308,11 +321,25 @@ func (g grepp) Run() {
 			continue
 		}
 		if g.filenameOnly {
-			if checkPatternInFile(filename, g.pattern, !g.caseSensitive) {
+			ok, err := checkPatternInFile(filename, g.pattern, !g.caseSensitive)
+			if err != nil {
+				if _, ok := err.(errorBufferTooSmall); ok {
+					g.printMinorWarning(err.Error())
+				} else {
+					fmt.Fprintf(g.Stderr, "%s", err)
+				}
+			} else if ok {
 				fmt.Fprintf(g.Stdout, "%s%s\n", color(ansi.Magenta, filename, g.useColor), colorReset(g.useColor))
 			}
 		} else {
-			if checkPatternInFile(filename, g.pattern, !g.caseSensitive) {
+			ok, err := checkPatternInFile(filename, g.pattern, !g.caseSensitive)
+			if err != nil {
+				if _, ok := err.(errorBufferTooSmall); ok {
+					g.printMinorWarning(err.Error())
+				} else {
+					fmt.Fprintf(g.Stderr, "%s", err)
+				}
+			} else if ok {
 				var tmpFile *os.File
 				var err error
 				if g.force {

@@ -81,7 +81,7 @@ func TestCheckPatternInFile(t *testing.T) {
 		{"test_tree/A/b/C/d/E", "test", true, false},
 	}
 	for _, c := range cases {
-		r := checkPatternInFile(c.file, c.pattern, c.ignoreCase)
+		r, _ := checkPatternInFile(c.file, c.pattern, c.ignoreCase)
 		if r != c.result {
 			t.Errorf("checkPatternInFile(%q, %q, %v) == (%v), want (%v)",
 				c.file, c.pattern, c.ignoreCase, r, c.result)
