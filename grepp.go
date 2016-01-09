@@ -404,7 +404,9 @@ func (g *grepp) SetStdout(w io.Writer) {
 
 func synopsis() {
 	synopsis := `grepp <pattern> [<location>] [-r <replace pattern> [-f]]
-      [-c] [-n] [-l] [--debug | --trace]
+      [-I] [-c] [-n] [-l] [--color]
+      [--buffer <size>] [--show-buffer-errors|--sbe]
+      [--debug | --trace]
 
 # not available yet
 [-C <lines of context>] [--fp] [--name <file pattern>]
