@@ -263,6 +263,7 @@ type grepp struct {
 	pattern              string
 	filePattern          string
 	ignoreFilePattern    string
+	ignoreExtensionList  map[string]bool
 	Stdout               io.Writer
 	Stderr               io.Writer
 }
@@ -273,13 +274,22 @@ func (g grepp) String() string {
 }
 
 func (g grepp) Run() {
-	fileList, err := fileutils.ListFiles(g.searchBase, true, true)
-	if err != nil {
-		fmt.Fprintf(g.Stderr, "%s\n", err)
-		return
+	var fileList []string
+	if g.showFile {
+		list, err := fileutils.ListFiles(g.searchBase, true, true)
+		if err != nil {
+			fmt.Fprintf(g.Stderr, "%s\n", err)
+			return
+		}
+		fileList = list
+	} else {
+		fileList = []string{g.searchBase}
 	}
 
 	for _, filename := range fileList {
+		if g.ignoreExtensionList[filepath.Ext(filename)] {
+			continue
+		}
 		if g.ignoreBinary == true && !isText(filename) {
 			continue
 		}
@@ -389,6 +399,17 @@ func main() {
 	var noPager bool
 	var debug, trace bool
 	g := grepp{}
+	// TODO: Read from ~/.grepprc
+	g.ignoreExtensionList = map[string]bool{
+		".un~": true, // vim
+		".swp": true, // vim
+		".svg": true, // image
+		".png": true, // image
+		".PNG": true, // image
+		".jpg": true, // image
+		".ttf": true, // font
+		".pdf": true, // pdf
+	}
 	opt := getoptions.New()
 	opt.Bool("h", false)       // Help
 	opt.Bool("version", false) // version info
@@ -405,6 +426,7 @@ func main() {
 	opt.BoolVar(&noPager, "no-pager", false)
 	opt.BoolVar(&debug, "debug", false) // debug logging
 	opt.BoolVar(&trace, "trace", false) // trace logging
+	ie := opt.StringSlice("ignore-extension", "ie")
 	// "fp"      // fullPath - Used to show the file full path instead of the relative to the current dir.
 	// "name"    // filePattern - Use to further filter the search to files matching that pattern.
 	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
@@ -425,6 +447,10 @@ func main() {
 		version := semver.Version{Major: 0, Minor: 9, Patch: 0, PreReleaseLabel: "dev"}
 		fmt.Println(version)
 		os.Exit(1)
+	}
+
+	for _, ext := range *ie {
+		g.ignoreExtensionList[ext] = true
 	}
 
 	// Check if stdout is pipe p or device D
