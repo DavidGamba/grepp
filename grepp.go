@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/davidgamba/go-getoptions"
+	"github.com/davidgamba/go-utils/fileutils"
 	l "github.com/davidgamba/grepp/logging"
 	"github.com/davidgamba/grepp/runInPager"
 	"github.com/davidgamba/grepp/semver"
@@ -25,7 +26,7 @@ import (
 
 // Buffer Size used to read files when searching through them.
 // Default value should cover most cases.
-var bufferSize = 4 * 1024
+var bufferSize int
 
 func getMimeType(filename string) string {
 	file, err := os.Open(filename)
@@ -45,52 +46,13 @@ func isText(filename string) bool {
 	return strings.HasPrefix(s, "text/")
 }
 
-func getFileList(filename string, ignoreDirs bool) <-chan string {
-	l.Trace.Printf("getFileList: %s", filename)
-	c := make(chan string)
-	go func() {
-		fInfo, err := os.Stat(filename)
-		if err != nil {
-			l.Warning.Println("cannot stat", filename)
-			l.Error.Fatal(err)
-		}
-		if fInfo.IsDir() {
-			if ignoreDirs == false {
-				c <- filename
-			}
-			fileSearch := filename + string(filepath.Separator) + "*"
-			l.Trace.Printf("file search: %s", fileSearch)
-			fileMatches, err := filepath.Glob(fileSearch)
-			if err != nil {
-				l.Error.Fatal(err)
-			}
-			l.Trace.Printf("fileMatches: %s", fileMatches)
-			for _, file := range fileMatches {
-				if filepath.Base(filename) == filepath.Base(file) {
-					l.Debug.Printf("skipping: %s", filename)
-					continue
-				}
-				l.Trace.Printf("go: %s", file)
-				d := getFileList(file, ignoreDirs)
-				for dirFile := range d {
-					c <- dirFile
-				}
-			}
-		} else {
-			c <- filename
-		}
-		close(c)
-	}()
-	return c
-}
-
 var errorBufferSizeTooSmall = fmt.Errorf("buffer size too small")
 
 func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool, error) {
 	re, _ := getRegex(pattern, ignoreCase)
 	file, err := os.Open(filename)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("Error Opening file %s: '%s'\n", filename, err)
 	}
 	defer file.Close()
 
@@ -105,7 +67,7 @@ func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool,
 		}
 		if err != nil {
 			if err != io.EOF {
-				errRet = err
+				errRet = fmt.Errorf("Error reading file line by line: %s\n", err)
 			}
 			break
 		}
@@ -311,10 +273,13 @@ func (g grepp) String() string {
 }
 
 func (g grepp) Run() {
-	c := getFileList(g.searchBase, true)
+	fileList, err := fileutils.ListFiles(g.searchBase, true, true)
+	if err != nil {
+		fmt.Fprintf(g.Stderr, "%s\n", err)
+		return
+	}
 
-	for filename := range c {
-		// fmt.Printf("%s -> %s\n", filename, getMimeType(filename))
+	for _, filename := range fileList {
 		if g.ignoreBinary == true && !isText(filename) {
 			continue
 		}
@@ -435,7 +400,7 @@ func main() {
 	opt.StringVar(&g.replace, "r", "")
 	opt.BoolVar(&g.force, "f", false)
 	opt.IntVar(&g.context, "C", 0)
-	opt.IntVar(&bufferSize, "buffer", 0)
+	opt.IntVar(&bufferSize, "buffer", 2048)
 	opt.BoolVar(&g.showBufferSizeErrors, "show-buffer-errors", false, "sbe")
 	opt.BoolVar(&noPager, "no-pager", false)
 	opt.BoolVar(&debug, "debug", false) // debug logging
