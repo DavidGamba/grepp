@@ -424,22 +424,22 @@ func main() {
 	var noPager bool
 	var debug, trace bool
 	g := grepp{}
-	opt := getoptions.GetOptions()
-	opt.Flag("h")       // Help
-	opt.Flag("version") // version info
-	opt.FlagVar(&g.ignoreBinary, "I")
-	opt.FlagVar(&g.caseSensitive, "c")
-	opt.FlagVar(&g.useColor, "color")
-	opt.FlagVar(&g.useNumber, "n")
-	opt.FlagVar(&g.filenameOnly, "l")
-	opt.StringVar(&g.replace, "r")
-	opt.FlagVar(&g.force, "f")
-	opt.IntVar(&g.context, "C")
-	opt.IntVar(&bufferSize, "buffer")
-	opt.FlagVar(&g.showBufferSizeErrors, "show-buffer-errors", "sbe")
-	opt.FlagVar(&noPager, "no-pager")
-	opt.FlagVar(&debug, "debug") // debug logging
-	opt.FlagVar(&trace, "trace") // trace logging
+	opt := getoptions.New()
+	opt.Bool("h", false)       // Help
+	opt.Bool("version", false) // version info
+	opt.BoolVar(&g.ignoreBinary, "I", false)
+	opt.BoolVar(&g.caseSensitive, "c", false)
+	opt.BoolVar(&g.useColor, "color", false)
+	opt.BoolVar(&g.useNumber, "n", false)
+	opt.BoolVar(&g.filenameOnly, "l", false)
+	opt.StringVar(&g.replace, "r", "")
+	opt.BoolVar(&g.force, "f", false)
+	opt.IntVar(&g.context, "C", 0)
+	opt.IntVar(&bufferSize, "buffer", 0)
+	opt.BoolVar(&g.showBufferSizeErrors, "show-buffer-errors", false, "sbe")
+	opt.BoolVar(&noPager, "no-pager", false)
+	opt.BoolVar(&debug, "debug", false) // debug logging
+	opt.BoolVar(&trace, "trace", false) // trace logging
 	// "fp"      // fullPath - Used to show the file full path instead of the relative to the current dir.
 	// "name"    // filePattern - Use to further filter the search to files matching that pattern.
 	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
@@ -451,12 +451,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if opt.Option["h"] != nil && opt.Option["h"].(bool) {
+	if opt.Called("h") {
 		synopsis()
 		os.Exit(1)
 	}
 
-	if opt.Option["version"] != nil && opt.Option["version"].(bool) {
+	if opt.Called("version") {
 		version := semver.Version{Major: 0, Minor: 9, Patch: 0, PreReleaseLabel: "dev"}
 		fmt.Println(version)
 		os.Exit(1)
