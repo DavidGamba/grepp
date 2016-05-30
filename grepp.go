@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/davidgamba/go-getoptions"
-	"github.com/davidgamba/go-utils/fileutils"
 	l "github.com/davidgamba/grepp/logging"
 	"github.com/davidgamba/grepp/runInPager"
 	"github.com/davidgamba/grepp/semver"
@@ -245,6 +244,67 @@ func copyFileContents(src, dst string) (err error) {
 	return
 }
 
+// listFiles returns []string with a list of files.
+func listFiles(dirname string, ignoreDirs, recursive bool, ignoreDirList map[string]bool) ([]string, error) {
+	files := []string{}
+	fInfo, err := os.Stat(dirname)
+	if err != nil {
+		return nil, err
+	}
+	if fInfo.Mode()&os.ModeSymlink != 0 {
+		rl, err := os.Readlink(dirname)
+		if err != nil {
+			return nil, err
+		}
+		fInfo, err = os.Stat(rl)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if fInfo.IsDir() {
+		if ignoreDirList[filepath.Base(dirname)] {
+			return nil, err
+		}
+		fileMatches, err := ioutil.ReadDir(dirname)
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range fileMatches {
+			var rlFile os.FileInfo
+			if file.Mode()&os.ModeSymlink != 0 {
+				rl, err := os.Readlink(dirname + string(os.PathSeparator) + file.Name())
+				if err != nil {
+					return files, err
+				}
+				if !filepath.IsAbs(rl) {
+					rl = dirname + string(os.PathSeparator) + rl
+				}
+				rlFile, err = os.Stat(rl)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if (rlFile != nil && rlFile.IsDir()) || file.IsDir() {
+				if !ignoreDirs {
+					files = append(files, dirname+string(os.PathSeparator)+file.Name())
+				}
+				if recursive {
+					fl, err := listFiles(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive, ignoreDirList)
+					if err != nil {
+						return files, err
+					}
+					files = append(files, fl...)
+				}
+			} else {
+				files = append(files, dirname+string(os.PathSeparator)+file.Name())
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)
+	}
+	return files, nil
+}
+
 type grepp struct {
 	ignoreBinary  bool
 	caseSensitive bool
@@ -264,6 +324,7 @@ type grepp struct {
 	filePattern          string
 	ignoreFilePattern    string
 	ignoreExtensionList  map[string]bool
+	ignoreDirList        map[string]bool
 	Stdout               io.Writer
 	Stderr               io.Writer
 }
@@ -276,7 +337,7 @@ func (g grepp) String() string {
 func (g grepp) Run() {
 	var fileList []string
 	if g.showFile {
-		list, err := fileutils.ListFiles(g.searchBase, true, true)
+		list, err := listFiles(g.searchBase, true, true, g.ignoreDirList)
 		if err != nil {
 			fmt.Fprintf(g.Stderr, "%s\n", err)
 			return
@@ -409,6 +470,10 @@ func main() {
 		".jpg": true, // image
 		".ttf": true, // font
 		".pdf": true, // pdf
+	}
+	g.ignoreDirList = map[string]bool{
+		".git": true, // git
+		".svn": true, // svn
 	}
 	opt := getoptions.New()
 	opt.Bool("h", false)       // Help
