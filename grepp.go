@@ -339,8 +339,8 @@ func (g grepp) Run() {
 	if g.showFile {
 		list, err := listFiles(g.searchBase, true, true, g.ignoreDirList)
 		if err != nil {
+			// TODO: Wrap error not to pass underlying error directly.
 			fmt.Fprintf(g.Stderr, "%s\n", err)
-			return
 		}
 		fileList = list
 	} else {
