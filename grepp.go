@@ -16,10 +16,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/davidgamba/go-getoptions"
-	l "github.com/davidgamba/grepp/logging"
-	"github.com/davidgamba/grepp/runInPager"
-	"github.com/davidgamba/grepp/semver"
+	"github.com/DavidGamba/go-getoptions"
+	l "github.com/DavidGamba/grepp/logging"
+	"github.com/DavidGamba/grepp/runInPager"
+	"github.com/DavidGamba/grepp/semver"
 	"github.com/mgutz/ansi"
 )
 
@@ -478,10 +478,10 @@ func main() {
 	opt := getoptions.New()
 	opt.Bool("h", false)       // Help
 	opt.Bool("version", false) // version info
-	opt.BoolVar(&g.ignoreBinary, "I", false)
+	opt.BoolVar(&g.ignoreBinary, "I", true)
 	opt.BoolVar(&g.caseSensitive, "c", false)
 	opt.BoolVar(&g.useColor, "color", false)
-	opt.BoolVar(&g.useNumber, "n", false)
+	opt.BoolVar(&g.useNumber, "n", true)
 	opt.BoolVar(&g.filenameOnly, "l", false)
 	opt.StringVar(&g.replace, "r", "")
 	opt.BoolVar(&g.force, "f", false)
@@ -491,7 +491,7 @@ func main() {
 	opt.BoolVar(&noPager, "no-pager", false)
 	opt.BoolVar(&debug, "debug", false) // debug logging
 	opt.BoolVar(&trace, "trace", false) // trace logging
-	ie := opt.StringSlice("ignore-extension", "ie")
+	ie := opt.StringSlice("ignore-extension", 1, 1, "ie")
 	// "fp"      // fullPath - Used to show the file full path instead of the relative to the current dir.
 	// "name"    // filePattern - Use to further filter the search to files matching that pattern.
 	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
