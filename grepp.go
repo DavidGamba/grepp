@@ -1,5 +1,13 @@
+// This file is part of grepp.
+//
+// Copyright (C) 2012-2017  David Gamba Rios
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 /*
-grepp - An improved version of the most common combinations of grep, find and sed in a single script.
+Package main provides an improved version of the most common combinations of grep, find and sed in a single script.
 */
 package main
 
@@ -16,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DavidGamba/ffind/lib/ffind"
 	"github.com/DavidGamba/go-getoptions"
 	l "github.com/DavidGamba/grepp/logging"
 	"github.com/DavidGamba/grepp/runInPager"
@@ -244,67 +253,6 @@ func copyFileContents(src, dst string) (err error) {
 	return
 }
 
-// listFiles returns []string with a list of files.
-func listFiles(dirname string, ignoreDirs, recursive bool, ignoreDirList map[string]bool) ([]string, error) {
-	files := []string{}
-	fInfo, err := os.Stat(dirname)
-	if err != nil {
-		return nil, err
-	}
-	if fInfo.Mode()&os.ModeSymlink != 0 {
-		rl, err := os.Readlink(dirname)
-		if err != nil {
-			return nil, err
-		}
-		fInfo, err = os.Stat(rl)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if fInfo.IsDir() {
-		if ignoreDirList[filepath.Base(dirname)] {
-			return nil, err
-		}
-		fileMatches, err := ioutil.ReadDir(dirname)
-		if err != nil {
-			return nil, err
-		}
-		for _, file := range fileMatches {
-			var rlFile os.FileInfo
-			if file.Mode()&os.ModeSymlink != 0 {
-				rl, err := os.Readlink(dirname + string(os.PathSeparator) + file.Name())
-				if err != nil {
-					return files, err
-				}
-				if !filepath.IsAbs(rl) {
-					rl = dirname + string(os.PathSeparator) + rl
-				}
-				rlFile, err = os.Stat(rl)
-				if err != nil {
-					return nil, err
-				}
-			}
-			if (rlFile != nil && rlFile.IsDir()) || file.IsDir() {
-				if !ignoreDirs {
-					files = append(files, dirname+string(os.PathSeparator)+file.Name())
-				}
-				if recursive {
-					fl, err := listFiles(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive, ignoreDirList)
-					if err != nil {
-						return files, err
-					}
-					files = append(files, fl...)
-				}
-			} else {
-				files = append(files, dirname+string(os.PathSeparator)+file.Name())
-			}
-		}
-	} else {
-		return nil, fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)
-	}
-	return files, nil
-}
-
 type grepp struct {
 	ignoreBinary  bool
 	caseSensitive bool
@@ -323,8 +271,7 @@ type grepp struct {
 	pattern              string
 	filePattern          string
 	ignoreFilePattern    string
-	ignoreExtensionList  map[string]bool
-	ignoreDirList        map[string]bool
+	ignoreExtensionList  []string
 	Stdout               io.Writer
 	Stderr               io.Writer
 }
@@ -334,23 +281,45 @@ func (g grepp) String() string {
 		g.ignoreBinary, g.caseSensitive, g.useColor, g.useNumber, g.filenameOnly, g.force)
 }
 
-func (g grepp) Run() {
-	var fileList []string
-	if g.showFile {
-		list, err := listFiles(g.searchBase, true, true, g.ignoreDirList)
-		if err != nil {
-			// TODO: Wrap error not to pass underlying error directly.
-			fmt.Fprintf(g.Stderr, "%s\n", err)
+func (g grepp) getFileList() <-chan ffind.FileError {
+	c := make(chan ffind.FileError)
+	go func() {
+		if g.showFile {
+			ch := ffind.ListRecursive(
+				g.searchBase,
+				true,
+				&ffind.BasicFileMatch{
+					IgnoreDirResults:        true,
+					IgnoreFileResults:       false,
+					IgnoreVCSDirs:           true,
+					IgnoreHidden:            true,
+					IgnoreFileExtensionList: g.ignoreExtensionList,
+				},
+				ffind.SortFnByName)
+			for e := range ch {
+				if e.Error != nil {
+					fmt.Fprintf(os.Stderr, "ERROR: '%s' %s\n", e.Path, e.Error)
+					// Ignore broken symlinks
+					if os.IsNotExist(e.Error) {
+						continue
+					}
+				}
+				c <- e
+			}
+		} else {
+			// TODO: FileInfo is not generated here. Check if it is needed.
+			c <- ffind.FileError{
+				Path: g.searchBase,
+			}
 		}
-		fileList = list
-	} else {
-		fileList = []string{g.searchBase}
-	}
+		close(c)
+	}()
+	return c
+}
 
-	for _, filename := range fileList {
-		if g.ignoreExtensionList[filepath.Ext(filename)] {
-			continue
-		}
+func (g grepp) Run() {
+	for ch := range g.getFileList() {
+		filename := ch.Path
 		if g.ignoreBinary == true && !isText(filename) {
 			continue
 		}
@@ -461,19 +430,15 @@ func main() {
 	var debug, trace bool
 	g := grepp{}
 	// TODO: Read from ~/.grepprc
-	g.ignoreExtensionList = map[string]bool{
-		".un~": true, // vim
-		".swp": true, // vim
-		".svg": true, // image
-		".png": true, // image
-		".PNG": true, // image
-		".jpg": true, // image
-		".ttf": true, // font
-		".pdf": true, // pdf
-	}
-	g.ignoreDirList = map[string]bool{
-		".git": true, // git
-		".svn": true, // svn
+	g.ignoreExtensionList = []string{
+		".un~", // vim
+		".swp", // vim
+		".svg", // image
+		".png", // image
+		".PNG", // image
+		".jpg", // image
+		".ttf", // font
+		".pdf", // pdf
 	}
 	opt := getoptions.New()
 	opt.Bool("h", false)       // Help
@@ -515,7 +480,7 @@ func main() {
 	}
 
 	for _, ext := range *ie {
-		g.ignoreExtensionList[ext] = true
+		g.ignoreExtensionList = append(g.ignoreExtensionList, ext)
 	}
 
 	// Check if stdout is pipe p or device D
