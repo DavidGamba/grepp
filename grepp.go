@@ -13,7 +13,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -56,35 +55,60 @@ func isText(filename string) bool {
 
 var errorBufferSizeTooSmall = fmt.Errorf("buffer size too small")
 
+type LineError struct {
+	Line       string
+	LineNumber int
+	Error      error
+}
+
+func ReadLineByLine(filename string, bufferSize int) <-chan LineError {
+	l.Debug.Printf("[readLineByLine] %s : %d\n", filename)
+	c := make(chan LineError)
+	go func() {
+		fh, err := os.Open(filename)
+		if err != nil {
+			c <- LineError{Error: err}
+			close(c)
+			return
+		}
+		defer fh.Close()
+		reader := bufio.NewReaderSize(fh, bufferSize)
+		// line number
+		n := 0
+		for {
+			n++
+			line, isPrefix, err := reader.ReadLine()
+			if isPrefix {
+				err := fmt.Errorf("%s: buffer size too small", filename)
+				c <- LineError{Error: err}
+				break
+			}
+			// stop reading file
+			if err != nil {
+				if err != io.EOF {
+					c <- LineError{Error: err}
+				}
+				break
+			}
+			c <- LineError{Line: string(line), LineNumber: n}
+		}
+		close(c)
+	}()
+	return c
+}
+
 func checkPatternInFile(filename string, pattern string, ignoreCase bool) (bool, error) {
 	re, _ := getRegex(pattern, ignoreCase)
-	file, err := os.Open(filename)
-	if err != nil {
-		return false, fmt.Errorf("Error Opening file %s: '%s'\n", filename, err)
-	}
-	defer file.Close()
-
-	reader := bufio.NewReaderSize(file, bufferSize)
-
-	var errRet error
-	for {
-		line, isPrefix, err := reader.ReadLine()
-		if isPrefix {
-			errRet = errorBufferSizeTooSmall
-			break
+	for le := range ReadLineByLine(filename, bufferSize) {
+		if le.Error != nil {
+			return false, le.Error
 		}
-		if err != nil {
-			if err != io.EOF {
-				errRet = fmt.Errorf("Error reading file line by line: %s\n", err)
-			}
-			break
-		}
-		match := re.MatchString(string(line))
+		match := re.MatchString(string(le.Line))
 		if match {
-			return true, errRet
+			return true, nil
 		}
 	}
-	return false, errRet
+	return false, nil
 }
 
 type lineMatch struct {
@@ -106,36 +130,18 @@ func getRegex(pattern string, ignoreCase bool) (re, reEnd *regexp.Regexp) {
 	return
 }
 
+// TODO: Handle error properly here
 func searchInFile(filename, pattern string, ignoreCase bool) <-chan lineMatch {
 	c := make(chan lineMatch)
 	re, reEnd := getRegex(pattern, ignoreCase)
 	go func() {
-		file, err := os.Open(filename)
-		if err != nil {
-			l.Error.Fatal(err)
-		}
-		defer file.Close()
-
-		reader := bufio.NewReaderSize(file, bufferSize)
-		// line number
-		n := 0
-		for {
-			n++
-			line, isPrefix, err := reader.ReadLine()
-			if isPrefix {
-				l.Warning.Println(errors.New(filename + ": buffer size too small"))
-				break
+		for le := range ReadLineByLine(filename, bufferSize) {
+			if le.Error != nil {
+				l.Error.Fatal(le.Error)
 			}
-			// stop reading file
-			if err != nil {
-				if err != io.EOF {
-					l.Error.Println(err)
-				}
-				break
-			}
-			match := re.FindAllStringSubmatch(string(line), -1)
-			remainder := reEnd.FindStringSubmatch(string(line))
-			c <- lineMatch{filename: filename, n: n, line: string(line), match: match, end: remainder}
+			match := re.FindAllStringSubmatch(string(le.Line), -1)
+			remainder := reEnd.FindStringSubmatch(string(le.Line))
+			c <- lineMatch{filename: filename, n: le.LineNumber, line: string(le.Line), match: match, end: remainder}
 		}
 		close(c)
 	}()
