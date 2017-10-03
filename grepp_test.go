@@ -57,3 +57,18 @@ func TestGetRegex(t *testing.T) {
 		}
 	}
 }
+
+func TestGetMimeType(t *testing.T) {
+	if isText("grepp.png") {
+		t.Errorf("Wrong mime detected for a PNG file\n")
+	}
+	if isText("grepp") {
+		t.Errorf("Wrong mime detected for an executable file\n")
+	}
+	if !isText("grepp.txt") {
+		t.Errorf("Wrong mime detected for a text file\n")
+	}
+	if !isText("grepp.adoc") {
+		t.Errorf("Wrong mime detected for an adoc file\n")
+	}
+}

@@ -16,8 +16,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
+	"mime"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -35,21 +36,19 @@ import (
 // Default value should cover most cases.
 var bufferSize int
 
-func getMimeType(filename string) string {
-	file, err := os.Open(filename)
-	if err != nil {
-		l.Warning.Println("cannot open", filename)
-		l.Error.Fatal(err)
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	b := scanner.Bytes()
-	return http.DetectContentType(b)
-}
-
+// TODO: Check if there are any additional mime types we should allow.
+// isText - Determines if the file is a text based file by its extension.
 func isText(filename string) bool {
-	s := getMimeType(filename)
+	ext := path.Ext(filename)
+	// If there is no extension assume binary
+	if ext == "" {
+		return false
+	}
+	s := mime.TypeByExtension(ext)
+	// If there is no associated mime assume text
+	if s == "" {
+		return true
+	}
 	return strings.HasPrefix(s, "text/")
 }
 
