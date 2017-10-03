@@ -16,9 +16,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -26,6 +24,7 @@ import (
 
 	"github.com/DavidGamba/ffind/lib/ffind"
 	"github.com/DavidGamba/go-getoptions"
+	greppLib "github.com/DavidGamba/grepp/lib/grepp"
 	l "github.com/DavidGamba/grepp/logging"
 	"github.com/DavidGamba/grepp/runInPager"
 	"github.com/DavidGamba/grepp/semver"
@@ -35,22 +34,6 @@ import (
 // Buffer Size used to read files when searching through them.
 // Default value should cover most cases.
 var bufferSize int
-
-// TODO: Check if there are any additional mime types we should allow.
-// isText - Determines if the file is a text based file by its extension.
-func isText(filename string) bool {
-	ext := path.Ext(filename)
-	// If there is no extension assume binary
-	if ext == "" {
-		return false
-	}
-	s := mime.TypeByExtension(ext)
-	// If there is no associated mime assume text
-	if s == "" {
-		return true
-	}
-	return strings.HasPrefix(s, "text/")
-}
 
 var errorBufferSizeTooSmall = fmt.Errorf("buffer size too small")
 
@@ -325,7 +308,7 @@ func (g grepp) getFileList() <-chan ffind.FileError {
 func (g grepp) Run() {
 	for ch := range g.getFileList() {
 		filename := ch.Path
-		if g.ignoreBinary == true && !isText(filename) {
+		if g.ignoreBinary == true && !greppLib.IsTextMIME(filename) {
 			continue
 		}
 		if g.filenameOnly {
