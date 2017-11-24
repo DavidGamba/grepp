@@ -61,7 +61,7 @@ func ReadLineByLine(filename string, bufferSize int) <-chan LineError {
 			n++
 			line, isPrefix, err := reader.ReadLine()
 			if isPrefix {
-				err := fmt.Errorf("%s: buffer size too small", filename)
+				err := fmt.Errorf("%s: %s\n", filename, errorBufferSizeTooSmall)
 				c <- LineError{Error: err}
 				break
 			}
@@ -317,7 +317,7 @@ func (g grepp) Run() {
 				switch err {
 				case errorBufferSizeTooSmall:
 					if g.showBufferSizeErrors {
-						g.printMinorWarning(fmt.Sprintf("%s : %s", filename, err.Error()))
+						g.printMinorWarning(fmt.Sprintf("%s : %s\n", filename, err.Error()))
 					} else {
 						g.bufferSizeErrorsC++
 					}
@@ -333,7 +333,7 @@ func (g grepp) Run() {
 				switch err {
 				case errorBufferSizeTooSmall:
 					if g.showBufferSizeErrors {
-						g.printMinorWarning(fmt.Sprintf("%s : %s", filename, err.Error()))
+						g.printMinorWarning(fmt.Sprintf("%s : %s\n", filename, err.Error()))
 					} else {
 						g.bufferSizeErrorsC++
 					}
@@ -380,7 +380,7 @@ func (g grepp) Run() {
 	}
 
 	if g.bufferSizeErrorsC > 0 {
-		fmt.Fprintf(g.Stderr, "WARNING: %s found %d times", errorBufferSizeTooSmall, g.bufferSizeErrorsC)
+		fmt.Fprintf(g.Stderr, "WARNING: %s found %d times\n", errorBufferSizeTooSmall, g.bufferSizeErrorsC)
 	}
 }
 
