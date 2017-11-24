@@ -6,10 +6,11 @@ grepp - An improved version of the most common combinations of grep, find and se
 
 == Synopsys
 
-*grepp* _pattern_ [_location_]
-      [*--if* | *--ignore-file* _file_pattern_] [*--spacing*]
-      [*--context*|*-C* _NUM_ ] [-'NUM'] [*--number*|*-n*]
-      [*--debug* _level_]
+*grepp* _pattern_ [_location_] [*-r* _replace_pattern_ [*-f*]]
+      [*-I*] [*-c*] [*-l*] [*--ignore-extension*|*--ie* _ext_] [*--color*]
+      [*--buffer* _size_] [*--show-buffer-errors*|*--sbe*]
+      [*--no-pager*]
+      [*--debug*|*--trace*]
 
 *grepp* [*-h* |*-?*] # Short help
 
@@ -58,11 +59,11 @@ Case insensitive.
 
 Print full paths for matching files.
 
-*--spacing*::
+*TODO* *--spacing*::
 
 Print original spacing. By default initial spacing is ignored.
 
-*-C* 'NUM', -'NUM', *--context*='NUM'::
+*TODO* *-C* 'NUM', -'NUM', *--context*='NUM'::
 
 Print 'NUM' lines of output context. Places a line containing a group
 separator (--) between contiguous groups of matches.  With the -o or

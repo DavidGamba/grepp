@@ -397,13 +397,16 @@ func (g *grepp) SetStdout(w io.Writer) {
 
 func synopsis() {
 	synopsis := `grepp <pattern> [<location>] [-r <replace pattern> [-f]]
-      [-I] [-c] [-n] [-l] [--color]
+      [-I] [-c] [-n] [-l] [--ignore-extension|--ie <ext>] [--color]
       [--buffer <size>] [--show-buffer-errors|--sbe]
+      [--no-pager]
       [--debug | --trace]
 
 # not available yet
 [-C <lines of context>] [--fp] [--name <file pattern>]
 [--spacing] [--ignore <file pattern>]
+
+grepp --version
 
 grepp -h # show this help
 man grepp # show manpage`
