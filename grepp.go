@@ -501,6 +501,8 @@ func main() {
 		g.showFile = true
 	} else {
 		g.showFile = false
+		// If filename provided, don't skip it
+		g.ignoreBinary = false
 	}
 
 	g.pattern = remaining[0]
