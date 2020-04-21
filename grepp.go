@@ -430,6 +430,7 @@ func main() {
 		".jpg", // image
 		".ttf", // font
 		".pdf", // pdf
+		".tfstate", // terraform state
 	}
 	opt := getoptions.New()
 	opt.Bool("h", false)       // Help
@@ -443,11 +444,11 @@ func main() {
 	opt.BoolVar(&g.force, "f", false)
 	opt.IntVar(&g.context, "C", 0)
 	opt.IntVar(&bufferSize, "buffer", 2048)
-	opt.BoolVar(&g.showBufferSizeErrors, "show-buffer-errors", false, "sbe")
+	opt.BoolVar(&g.showBufferSizeErrors, "show-buffer-errors", false, opt.Alias("sbe"))
 	opt.BoolVar(&noPager, "no-pager", false)
 	opt.BoolVar(&debug, "debug", false) // debug logging
 	opt.BoolVar(&trace, "trace", false) // trace logging
-	ie := opt.StringSlice("ignore-extension", 1, 1, "ie")
+	ie := opt.StringSlice("ignore-extension", 1, 1, opt.Alias("ie"))
 	// "fp"      // fullPath - Used to show the file full path instead of the relative to the current dir.
 	// "name"    // filePattern - Use to further filter the search to files matching that pattern.
 	// "ignore"  // ignoreFilePattern - Use to further filter the search to files not matching that pattern.
